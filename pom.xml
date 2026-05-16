@@ -15,7 +15,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <!-- Fallbacks; overridden automatically by the platform-detection profiles below -->
         <javafx.platform>win</javafx.platform>
-        <jpackage.type>exe</jpackage.type>
+        <jpackage.type>app-image</jpackage.type>
     </properties>
 
     <dependencies>
@@ -289,7 +289,7 @@
             </activation>
             <properties>
                 <javafx.platform>win</javafx.platform>
-                <jpackage.type>exe</jpackage.type>
+                <jpackage.type>app-image</jpackage.type>
             </properties>
         </profile>
 
@@ -303,7 +303,7 @@
             </activation>
             <properties>
                 <javafx.platform>mac</javafx.platform>
-                <jpackage.type>dmg</jpackage.type>
+                <jpackage.type>app-image</jpackage.type>
             </properties>
         </profile>
 
@@ -317,7 +317,7 @@
             </activation>
             <properties>
                 <javafx.platform>mac-aarch64</javafx.platform>
-                <jpackage.type>dmg</jpackage.type>
+                <jpackage.type>app-image</jpackage.type>
             </properties>
         </profile>
 
@@ -328,7 +328,7 @@
             </activation>
             <properties>
                 <javafx.platform>linux</javafx.platform>
-                <jpackage.type>deb</jpackage.type>
+                <jpackage.type>app-image</jpackage.type>
             </properties>
         </profile>
 
