@@ -1,18 +1,18 @@
-# jpost — How-To Guide
+# HowlMan — How-To Guide
 
-A lightweight command-line HTTP client. Store named requests, switch environments,
+A lightweight HTTP client (CLI + GUI). Store named requests, switch environments,
 and run requests by name — like Postman but from the terminal.
 
 ---
 
-## Running jpost
+## Running HowlMan
 
 ```
-java -jar jpost-1.0.0.jar <command> [options]
+java -jar howlman-1.0.0.jar <command> [options]
 ```
 
-All examples below assume you are in the directory containing `jpost-1.0.0.jar`.
-Replace `jpost-1.0.0.jar` with the full path if needed.
+All examples below assume you are in the directory containing `howlman-1.0.0.jar`.
+Replace `howlman-1.0.0.jar` with the full path if needed.
 
 ---
 
@@ -20,13 +20,13 @@ Replace `jpost-1.0.0.jar` with the full path if needed.
 
 ```
 # Fire a one-off GET request
-java -jar jpost-1.0.0.jar run --url https://httpbin.org/get
+java -jar howlman-1.0.0.jar run --url https://httpbin.org/get
 
 # Save it for later
-java -jar jpost-1.0.0.jar request save --name my-get --url https://httpbin.org/get
+java -jar howlman-1.0.0.jar request save --name my-get --url https://httpbin.org/get
 
 # Run it by name
-java -jar jpost-1.0.0.jar request run my-get
+java -jar howlman-1.0.0.jar request run my-get
 ```
 
 ---
@@ -45,7 +45,7 @@ java -jar jpost-1.0.0.jar request run my-get
 Run a request without saving it.
 
 ```
-java -jar jpost-1.0.0.jar run --url <url> [options]
+java -jar howlman-1.0.0.jar run --url <url> [options]
 ```
 
 ### Options
@@ -71,42 +71,42 @@ All enum options (`--method`, `--body-type`, `--auth-type`) are case-insensitive
 
 **Simple GET:**
 ```
-java -jar jpost-1.0.0.jar run --url https://httpbin.org/get
+java -jar howlman-1.0.0.jar run --url https://httpbin.org/get
 ```
 
 **GET with verbose headers:**
 ```
-java -jar jpost-1.0.0.jar run --url https://httpbin.org/get --verbose
+java -jar howlman-1.0.0.jar run --url https://httpbin.org/get --verbose
 ```
 
 **POST with a JSON body:**
 ```
-java -jar jpost-1.0.0.jar run --url https://httpbin.org/post --method post --body "{\"name\":\"alice\",\"age\":30}" --body-type json
+java -jar howlman-1.0.0.jar run --url https://httpbin.org/post --method post --body "{\"name\":\"alice\",\"age\":30}" --body-type json
 ```
 
 **POST with a form body:**
 ```
-java -jar jpost-1.0.0.jar run --url https://httpbin.org/post --method post --body "user=alice&pass=secret" --body-type form
+java -jar howlman-1.0.0.jar run --url https://httpbin.org/post --method post --body "user=alice&pass=secret" --body-type form
 ```
 
 **Custom headers:**
 ```
-java -jar jpost-1.0.0.jar run --url https://httpbin.org/get --header "Accept: application/json" --header "X-Tenant: acme"
+java -jar howlman-1.0.0.jar run --url https://httpbin.org/get --header "Accept: application/json" --header "X-Tenant: acme"
 ```
 
 **Bearer auth:**
 ```
-java -jar jpost-1.0.0.jar run --url https://httpbin.org/bearer --auth-type bearer --token mytoken123
+java -jar howlman-1.0.0.jar run --url https://httpbin.org/bearer --auth-type bearer --token mytoken123
 ```
 
 **Basic auth:**
 ```
-java -jar jpost-1.0.0.jar run --url https://httpbin.org/basic-auth/alice/secret --auth-type basic --username alice --password secret
+java -jar howlman-1.0.0.jar run --url https://httpbin.org/basic-auth/alice/secret --auth-type basic --username alice --password secret
 ```
 
 **See the curl command instead of running:**
 ```
-java -jar jpost-1.0.0.jar run --url https://httpbin.org/post --method post --body "{\"name\":\"alice\"}" --body-type json --curl
+java -jar howlman-1.0.0.jar run --url https://httpbin.org/post --method post --body "{\"name\":\"alice\"}" --body-type json --curl
 ```
 Output:
 ```
@@ -118,8 +118,8 @@ curl -X POST \
 
 **Test a specific HTTP status code:**
 ```
-java -jar jpost-1.0.0.jar run --url https://httpbin.org/status/404
-java -jar jpost-1.0.0.jar run --url https://httpbin.org/status/500
+java -jar howlman-1.0.0.jar run --url https://httpbin.org/status/404
+java -jar howlman-1.0.0.jar run --url https://httpbin.org/status/500
 ```
 
 ---
@@ -131,7 +131,7 @@ Save requests by name and run them later, with full environment variable support
 ### `request save`
 
 ```
-java -jar jpost-1.0.0.jar request save --name <name> --url <url> [options]
+java -jar howlman-1.0.0.jar request save --name <name> --url <url> [options]
 ```
 
 Accepts all the same options as `run` (except `--curl` and `--verbose`), plus:
@@ -147,17 +147,17 @@ If the collection does not exist it is created automatically.
 **Examples:**
 
 ```
-java -jar jpost-1.0.0.jar request save --name get-ip --url https://httpbin.org/ip
+java -jar howlman-1.0.0.jar request save --name get-ip --url https://httpbin.org/ip
 
-java -jar jpost-1.0.0.jar request save --name post-data --method post --url https://httpbin.org/post --body "{\"hello\":\"world\"}" --body-type json --auth-type bearer --token mytoken --collection my-api
+java -jar howlman-1.0.0.jar request save --name post-data --method post --url https://httpbin.org/post --body "{\"hello\":\"world\"}" --body-type json --auth-type bearer --token mytoken --collection my-api
 
-java -jar jpost-1.0.0.jar request save --name get-users --url "{{baseUrl}}/api/users" --auth-type bearer --token "{{authToken}}" --collection my-api
+java -jar howlman-1.0.0.jar request save --name get-users --url "{{baseUrl}}/api/users" --auth-type bearer --token "{{authToken}}" --collection my-api
 ```
 
 ### `request run`
 
 ```
-java -jar jpost-1.0.0.jar request run <name> [options]
+java -jar howlman-1.0.0.jar request run <name> [options]
 ```
 
 | Option | Description | Default |
@@ -170,19 +170,19 @@ java -jar jpost-1.0.0.jar request run <name> [options]
 **Examples:**
 
 ```
-java -jar jpost-1.0.0.jar request run get-ip
+java -jar howlman-1.0.0.jar request run get-ip
 
-java -jar jpost-1.0.0.jar request run get-users --collection my-api
+java -jar howlman-1.0.0.jar request run get-users --collection my-api
 
-java -jar jpost-1.0.0.jar request run get-users --collection my-api --env qa
+java -jar howlman-1.0.0.jar request run get-users --collection my-api --env qa
 
-java -jar jpost-1.0.0.jar request run post-data --curl
+java -jar howlman-1.0.0.jar request run post-data --curl
 ```
 
 ### `request list`
 
 ```
-java -jar jpost-1.0.0.jar request list [--collection <name>]
+java -jar howlman-1.0.0.jar request list [--collection <name>]
 ```
 
 Lists all saved requests. Without `--collection` shows requests across all collections.
@@ -197,7 +197,7 @@ Output format:
 ### `request show`
 
 ```
-java -jar jpost-1.0.0.jar request show <name> [--collection <name>]
+java -jar howlman-1.0.0.jar request show <name> [--collection <name>]
 ```
 
 Pretty-prints the saved request as JSON:
@@ -218,7 +218,7 @@ Pretty-prints the saved request as JSON:
 ### `request remove`
 
 ```
-java -jar jpost-1.0.0.jar request remove <name> [--collection <name>]
+java -jar howlman-1.0.0.jar request remove <name> [--collection <name>]
 ```
 
 ---
@@ -230,16 +230,16 @@ Environments hold named variables that get substituted into `{{variable}}` token
 ### Setup example
 
 ```
-java -jar jpost-1.0.0.jar env create dev
-java -jar jpost-1.0.0.jar env set dev baseUrl http://localhost:8080
-java -jar jpost-1.0.0.jar env set dev authToken devtoken123
+java -jar howlman-1.0.0.jar env create dev
+java -jar howlman-1.0.0.jar env set dev baseUrl http://localhost:8080
+java -jar howlman-1.0.0.jar env set dev authToken devtoken123
 
-java -jar jpost-1.0.0.jar env create qa
-java -jar jpost-1.0.0.jar env set qa baseUrl https://qa.example.com
-java -jar jpost-1.0.0.jar env set qa authToken qatoken456
+java -jar howlman-1.0.0.jar env create qa
+java -jar howlman-1.0.0.jar env set qa baseUrl https://qa.example.com
+java -jar howlman-1.0.0.jar env set qa authToken qatoken456
 
 # Switch the active environment globally
-java -jar jpost-1.0.0.jar env use dev
+java -jar howlman-1.0.0.jar env use dev
 ```
 
 Now any request with `{{baseUrl}}` or `{{authToken}}` will use the dev values.
@@ -260,8 +260,8 @@ Now any request with `{{baseUrl}}` or `{{authToken}}` will use the dev values.
 
 **Per-request override** (does not change the active environment):
 ```
-java -jar jpost-1.0.0.jar request run get-users --env qa
-java -jar jpost-1.0.0.jar run --url "{{baseUrl}}/health" --env prod
+java -jar howlman-1.0.0.jar request run get-users --env qa
+java -jar howlman-1.0.0.jar run --url "{{baseUrl}}/health" --env prod
 ```
 
 **Unresolved variables** produce a warning but do not stop execution:
@@ -276,14 +276,14 @@ Warning: unresolved variable {{baseUrl}} in url
 Collections group related saved requests together (e.g. one collection per API or project).
 
 ```
-java -jar jpost-1.0.0.jar collection create <name>
-java -jar jpost-1.0.0.jar collection list
-java -jar jpost-1.0.0.jar collection remove <name> [--force]
+java -jar howlman-1.0.0.jar collection create <name>
+java -jar howlman-1.0.0.jar collection list
+java -jar howlman-1.0.0.jar collection remove <name> [--force]
 ```
 
 `remove` will refuse to delete a collection that still contains requests unless you pass `--force`.
 
-The default collection is named `default`. You can change it by editing `~/.jpost/config.json`.
+The default collection is named `default`. You can change it by editing `~/.howlman/config.json`.
 
 ---
 
@@ -302,23 +302,23 @@ Fields that support interpolation:
 
 ```
 # Save a request with variables
-java -jar jpost-1.0.0.jar request save --name create-user --method post --url "{{baseUrl}}/users" --body "{\"name\":\"alice\"}" --body-type json --auth-type bearer --token "{{authToken}}" --collection my-api
+java -jar howlman-1.0.0.jar request save --name create-user --method post --url "{{baseUrl}}/users" --body "{\"name\":\"alice\"}" --body-type json --auth-type bearer --token "{{authToken}}" --collection my-api
 
 # Set up environments
-java -jar jpost-1.0.0.jar env create dev
-java -jar jpost-1.0.0.jar env set dev baseUrl http://localhost:8080
-java -jar jpost-1.0.0.jar env set dev authToken dev-secret
+java -jar howlman-1.0.0.jar env create dev
+java -jar howlman-1.0.0.jar env set dev baseUrl http://localhost:8080
+java -jar howlman-1.0.0.jar env set dev authToken dev-secret
 
-java -jar jpost-1.0.0.jar env create prod
-java -jar jpost-1.0.0.jar env set prod baseUrl https://api.example.com
-java -jar jpost-1.0.0.jar env set prod authToken prod-secret
+java -jar howlman-1.0.0.jar env create prod
+java -jar howlman-1.0.0.jar env set prod baseUrl https://api.example.com
+java -jar howlman-1.0.0.jar env set prod authToken prod-secret
 
 # Run against dev
-java -jar jpost-1.0.0.jar env use dev
-java -jar jpost-1.0.0.jar request run create-user --collection my-api
+java -jar howlman-1.0.0.jar env use dev
+java -jar howlman-1.0.0.jar request run create-user --collection my-api
 
 # Run against prod without changing the active env
-java -jar jpost-1.0.0.jar request run create-user --collection my-api --env prod
+java -jar howlman-1.0.0.jar request run create-user --collection my-api --env prod
 ```
 
 ---
@@ -361,16 +361,16 @@ date: Fri, 15 May 2026 12:00:00 GMT
 | 0 | Success (HTTP 2xx/3xx) |
 | 1 | Request/collection/environment not found, or HTTP 4xx/5xx |
 | 2 | Network / connection failure |
-| 3 | Malformed JSON in a storage file under `~/.jpost/` |
+| 3 | Malformed JSON in a storage file under `~/.howlman/` |
 
 ---
 
 ## Data Storage
 
-All data lives in `~/.jpost/` and is plain JSON — you can edit the files directly.
+All data lives in `~/.howlman/` and is plain JSON — you can edit the files directly.
 
 ```
-~/.jpost/
+~/.howlman/
 ├── config.json          ← active environment and default collection
 ├── collections/
 │   ├── default.json

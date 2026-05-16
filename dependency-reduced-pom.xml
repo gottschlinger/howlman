@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>com.github.gottsch</groupId>
-  <artifactId>jpost</artifactId>
+  <groupId>gottsch</groupId>
+  <artifactId>howlman</artifactId>
   <version>1.0.0-SNAPSHOT</version>
   <build>
     <plugins>
@@ -20,10 +20,10 @@
               <goal>shade</goal>
             </goals>
             <configuration>
-              <finalName>jpost-1.0.0</finalName>
+              <finalName>howlman-1.0.0</finalName>
               <transformers>
                 <transformer>
-                  <mainClass>com.github.gottsch.jpost.JPost</mainClass>
+                  <mainClass>gottsch.howlman.HowlMan</mainClass>
                 </transformer>
               </transformers>
               <filters>
@@ -35,6 +35,12 @@
                     <exclude>META-INF/*.RSA</exclude>
                   </excludes>
                 </filter>
+                <filter>
+                  <artifact>org.openjfx:*</artifact>
+                  <excludes>
+                    <exclude>**</exclude>
+                  </excludes>
+                </filter>
               </filters>
             </configuration>
           </execution>
@@ -42,6 +48,176 @@
       </plugin>
     </plugins>
   </build>
+  <profiles>
+    <profile>
+      <id>gui</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-maven-plugin</artifactId>
+            <version>0.0.8</version>
+            <configuration>
+              <mainClass>gottsch.howlman.gui.GuiLauncher</mainClass>
+              <options>
+                <option>--enable-native-access=ALL-UNNAMED</option>
+              </options>
+            </configuration>
+          </plugin>
+          <plugin>
+            <artifactId>maven-dependency-plugin</artifactId>
+            <version>3.6.0</version>
+            <executions>
+              <execution>
+                <id>copy-javafx-mods</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>copy</goal>
+                </goals>
+                <configuration>
+                  <artifactItems>
+                    <artifactItem>
+                      <groupId>org.openjfx</groupId>
+                      <artifactId>javafx-base</artifactId>
+                      <version>21</version>
+                      <classifier>${javafx.platform}</classifier>
+                    </artifactItem>
+                    <artifactItem>
+                      <groupId>org.openjfx</groupId>
+                      <artifactId>javafx-graphics</artifactId>
+                      <version>21</version>
+                      <classifier>${javafx.platform}</classifier>
+                    </artifactItem>
+                    <artifactItem>
+                      <groupId>org.openjfx</groupId>
+                      <artifactId>javafx-controls</artifactId>
+                      <version>21</version>
+                      <classifier>${javafx.platform}</classifier>
+                    </artifactItem>
+                    <artifactItem>
+                      <groupId>org.openjfx</groupId>
+                      <artifactId>javafx-fxml</artifactId>
+                      <version>21</version>
+                      <classifier>${javafx.platform}</classifier>
+                    </artifactItem>
+                  </artifactItems>
+                  <outputDirectory>${project.build.directory}/app-input</outputDirectory>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <artifactId>maven-antrun-plugin</artifactId>
+            <version>3.1.0</version>
+            <executions>
+              <execution>
+                <id>stage-app-jar</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>run</goal>
+                </goals>
+                <configuration>
+                  <target>
+                    <delete />
+                    <copy />
+                  </target>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <version>3.1.0</version>
+            <executions>
+              <execution>
+                <id>jpackage</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>exec</goal>
+                </goals>
+                <configuration>
+                  <executable>${java.home}/bin/jpackage</executable>
+                  <arguments>
+                    <argument>--type</argument>
+                    <argument>exe</argument>
+                    <argument>--name</argument>
+                    <argument>HowlMan</argument>
+                    <argument>--app-version</argument>
+                    <argument>1.0.0</argument>
+                    <argument>--input</argument>
+                    <argument>${project.build.directory}/app-input</argument>
+                    <argument>--main-jar</argument>
+                    <argument>howlman-1.0.0.jar</argument>
+                    <argument>--main-class</argument>
+                    <argument>gottsch.howlman.gui.GuiLauncher</argument>
+                    <argument>--java-options</argument>
+                    <argument>--module-path $APPDIR</argument>
+                    <argument>--java-options</argument>
+                    <argument>--add-modules javafx.controls,javafx.fxml,javafx.graphics,javafx.base</argument>
+                    <argument>--java-options</argument>
+                    <argument>--enable-native-access=ALL-UNNAMED</argument>
+                    <argument>--dest</argument>
+                    <argument>${project.build.directory}/dist</argument>
+                  </arguments>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+      <dependencies>
+        <dependency>
+          <groupId>org.openjfx</groupId>
+          <artifactId>javafx-base</artifactId>
+          <version>21</version>
+          <classifier>${javafx.platform}</classifier>
+        </dependency>
+        <dependency>
+          <groupId>org.openjfx</groupId>
+          <artifactId>javafx-graphics</artifactId>
+          <version>21</version>
+          <classifier>${javafx.platform}</classifier>
+        </dependency>
+        <dependency>
+          <groupId>org.openjfx</groupId>
+          <artifactId>javafx-controls</artifactId>
+          <version>21</version>
+          <classifier>${javafx.platform}</classifier>
+        </dependency>
+        <dependency>
+          <groupId>org.openjfx</groupId>
+          <artifactId>javafx-fxml</artifactId>
+          <version>21</version>
+          <classifier>${javafx.platform}</classifier>
+        </dependency>
+      </dependencies>
+    </profile>
+    <profile>
+      <id>platform-win</id>
+      <properties>
+        <javafx.platform>win</javafx.platform>
+      </properties>
+    </profile>
+    <profile>
+      <id>platform-mac</id>
+      <properties>
+        <javafx.platform>mac</javafx.platform>
+      </properties>
+    </profile>
+    <profile>
+      <id>platform-mac-aarch64</id>
+      <properties>
+        <javafx.platform>mac-aarch64</javafx.platform>
+      </properties>
+    </profile>
+    <profile>
+      <id>platform-linux</id>
+      <properties>
+        <javafx.platform>linux</javafx.platform>
+      </properties>
+    </profile>
+  </profiles>
   <dependencies>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
@@ -97,6 +273,7 @@
     </dependency>
   </dependencies>
   <properties>
+    <javafx.platform>win</javafx.platform>
     <maven.compiler.target>17</maven.compiler.target>
     <maven.compiler.source>17</maven.compiler.source>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
