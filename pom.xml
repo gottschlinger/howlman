@@ -4,8 +4,8 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.github.gottsch</groupId>
-    <artifactId>jpost</artifactId>
+    <groupId>gottsch</groupId>
+    <artifactId>howlman</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
@@ -13,9 +13,24 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- Fallbacks; overridden automatically by the platform-detection profiles below -->
+        <javafx.platform>win</javafx.platform>
+        <jpackage.type>app-image</jpackage.type>
     </properties>
 
     <dependencies>
+        <!-- JavaFX (compile scope; excluded from CLI fat jar by shade filter) -->
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-controls</artifactId>
+            <version>21</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-fxml</artifactId>
+            <version>21</version>
+        </dependency>
+
         <!-- CLI framework -->
         <dependency>
             <groupId>info.picocli</groupId>
@@ -70,10 +85,10 @@
                             <goal>shade</goal>
                         </goals>
                         <configuration>
-                            <finalName>jpost-1.0.0</finalName>
+                            <finalName>howlman-1.0.0</finalName>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>com.github.gottsch.jpost.JPost</mainClass>
+                                    <mainClass>gottsch.howlman.HowlMan</mainClass>
                                 </transformer>
                             </transformers>
                             <filters>
@@ -85,6 +100,13 @@
                                         <exclude>META-INF/*.RSA</exclude>
                                     </excludes>
                                 </filter>
+                                <!-- keep JavaFX out of the CLI fat jar -->
+                                <filter>
+                                    <artifact>org.openjfx:*</artifact>
+                                    <excludes>
+                                        <exclude>**</exclude>
+                                    </excludes>
+                                </filter>
                             </filters>
                         </configuration>
                     </execution>
@@ -92,4 +114,224 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!--
+            gui profile — adds platform-native JavaFX jars and build tooling.
+            The correct classifier (win / mac / mac-aarch64 / linux) is selected
+            automatically by the platform-detection profiles below.
+
+            Development run:  javafx:run  (from IntelliJ Maven panel)
+            Build installer:  mvn -P gui verify -DskipTests
+              Windows → target/dist/HowlMan-1.0.0.exe  (requires WiX v3)
+              Mac     → target/dist/HowlMan-1.0.0.dmg  (change type to dmg)
+        -->
+        <profile>
+            <id>gui</id>
+            <dependencies>
+                <dependency>
+                    <groupId>org.openjfx</groupId>
+                    <artifactId>javafx-base</artifactId>
+                    <version>21</version>
+                    <classifier>${javafx.platform}</classifier>
+                </dependency>
+                <dependency>
+                    <groupId>org.openjfx</groupId>
+                    <artifactId>javafx-graphics</artifactId>
+                    <version>21</version>
+                    <classifier>${javafx.platform}</classifier>
+                </dependency>
+                <dependency>
+                    <groupId>org.openjfx</groupId>
+                    <artifactId>javafx-controls</artifactId>
+                    <version>21</version>
+                    <classifier>${javafx.platform}</classifier>
+                </dependency>
+                <dependency>
+                    <groupId>org.openjfx</groupId>
+                    <artifactId>javafx-fxml</artifactId>
+                    <version>21</version>
+                    <classifier>${javafx.platform}</classifier>
+                </dependency>
+            </dependencies>
+            <build>
+                <plugins>
+
+                    <!-- Development launcher: javafx:run from Maven panel -->
+                    <plugin>
+                        <groupId>org.openjfx</groupId>
+                        <artifactId>javafx-maven-plugin</artifactId>
+                        <version>0.0.8</version>
+                        <configuration>
+                            <mainClass>gottsch.howlman.gui.GuiLauncher</mainClass>
+                            <options>
+                                <option>--enable-native-access=ALL-UNNAMED</option>
+                            </options>
+                        </configuration>
+                    </plugin>
+
+                    <!-- Step 1 (verify): copy platform JavaFX jars into app-input alongside the main jar -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <version>3.6.0</version>
+                        <executions>
+                            <execution>
+                                <id>copy-javafx-mods</id>
+                                <phase>verify</phase>
+                                <goals><goal>copy</goal></goals>
+                                <configuration>
+                                    <artifactItems>
+                                        <artifactItem>
+                                            <groupId>org.openjfx</groupId>
+                                            <artifactId>javafx-base</artifactId>
+                                            <version>21</version>
+                                            <classifier>${javafx.platform}</classifier>
+                                        </artifactItem>
+                                        <artifactItem>
+                                            <groupId>org.openjfx</groupId>
+                                            <artifactId>javafx-graphics</artifactId>
+                                            <version>21</version>
+                                            <classifier>${javafx.platform}</classifier>
+                                        </artifactItem>
+                                        <artifactItem>
+                                            <groupId>org.openjfx</groupId>
+                                            <artifactId>javafx-controls</artifactId>
+                                            <version>21</version>
+                                            <classifier>${javafx.platform}</classifier>
+                                        </artifactItem>
+                                        <artifactItem>
+                                            <groupId>org.openjfx</groupId>
+                                            <artifactId>javafx-fxml</artifactId>
+                                            <version>21</version>
+                                            <classifier>${javafx.platform}</classifier>
+                                        </artifactItem>
+                                    </artifactItems>
+                                    <outputDirectory>${project.build.directory}/app-input</outputDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- Step 2 (verify): stage app jar and clean previous dist -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <executions>
+                            <execution>
+                                <id>stage-app-jar</id>
+                                <phase>verify</phase>
+                                <goals><goal>run</goal></goals>
+                                <configuration>
+                                    <target>
+                                        <delete dir="${project.build.directory}/dist"/>
+                                        <copy file="${project.build.directory}/howlman-1.0.0.jar"
+                                              todir="${project.build.directory}/app-input"/>
+                                    </target>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- Step 3 (verify): build self-contained app image via jpackage.
+                         JavaFX jars sit alongside the main jar in app-input so that
+                         $APPDIR (resolved at launch) points to all required modules. -->
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <executions>
+                            <execution>
+                                <id>jpackage</id>
+                                <phase>verify</phase>
+                                <goals><goal>exec</goal></goals>
+                                <configuration>
+                                    <executable>${java.home}/bin/jpackage</executable>
+                                    <arguments>
+                                        <argument>--type</argument>
+                                        <argument>${jpackage.type}</argument>
+                                        <argument>--name</argument>
+                                        <argument>HowlMan</argument>
+                                        <argument>--app-version</argument>
+                                        <argument>1.0.0</argument>
+                                        <argument>--input</argument>
+                                        <argument>${project.build.directory}/app-input</argument>
+                                        <argument>--main-jar</argument>
+                                        <argument>howlman-1.0.0.jar</argument>
+                                        <argument>--main-class</argument>
+                                        <argument>gottsch.howlman.gui.GuiLauncher</argument>
+                                        <argument>--java-options</argument>
+                                        <argument>--module-path $APPDIR</argument>
+                                        <argument>--java-options</argument>
+                                        <argument>--add-modules javafx.controls,javafx.fxml,javafx.graphics,javafx.base</argument>
+                                        <argument>--java-options</argument>
+                                        <argument>--enable-native-access=ALL-UNNAMED</argument>
+                                        <argument>--dest</argument>
+                                        <argument>${project.build.directory}/dist</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                </plugins>
+            </build>
+        </profile>
+        <!--
+            OS-detection profiles — auto-activate to set javafx.platform.
+            The gui profile's classifier picks this up automatically.
+        -->
+        <profile>
+            <id>platform-win</id>
+            <activation>
+                <os><family>windows</family></os>
+            </activation>
+            <properties>
+                <javafx.platform>win</javafx.platform>
+                <jpackage.type>app-image</jpackage.type>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>platform-mac</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                    <arch>x86_64</arch>
+                </os>
+            </activation>
+            <properties>
+                <javafx.platform>mac</javafx.platform>
+                <jpackage.type>app-image</jpackage.type>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>platform-mac-aarch64</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <javafx.platform>mac-aarch64</javafx.platform>
+                <jpackage.type>app-image</jpackage.type>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>platform-linux</id>
+            <activation>
+                <os><name>Linux</name></os>
+            </activation>
+            <properties>
+                <javafx.platform>linux</javafx.platform>
+                <jpackage.type>app-image</jpackage.type>
+            </properties>
+        </profile>
+
+    </profiles>
+
 </project>
