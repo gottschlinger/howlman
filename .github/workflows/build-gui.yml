@@ -6,11 +6,20 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+permissions:
+  contents: write
+
 jobs:
   build:
     strategy:
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
+        include:
+          - os: windows-latest
+            zip_name: howlman-windows
+          - os: macos-latest
+            zip_name: howlman-macos
+          - os: ubuntu-latest
+            zip_name: howlman-linux
 
     runs-on: ${{ matrix.os }}
 
@@ -26,8 +35,36 @@ jobs:
       - name: Build GUI app image
         run: mvn -P gui verify -DskipTests
 
+      - name: Zip dist (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path target/dist/* -DestinationPath ${{ matrix.zip_name }}.zip
+
+      - name: Zip dist (Unix)
+        if: runner.os != 'Windows'
+        run: zip -r ${{ matrix.zip_name }}.zip target/dist/
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: howlman-${{ matrix.os }}
-          path: target/dist/
+          name: ${{ matrix.zip_name }}
+          path: ${{ matrix.zip_name }}.zip
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+          merge-multiple: true
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: HowlMan Build ${{ github.run_number }}
+          files: artifacts/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
