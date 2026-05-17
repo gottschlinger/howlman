@@ -16,7 +16,7 @@
         <!-- Fallbacks; overridden automatically by the platform-detection profiles below -->
         <javafx.platform>win</javafx.platform>
         <jpackage.type>app-image</jpackage.type>
-        <jpackage.icon>${project.basedir}/src/main/resources/gottschlinger/howlman/gui/icon.png</jpackage.icon>
+        <jpackage.icon.file>icon.png</jpackage.icon.file>
     </properties>
 
     <dependencies>
@@ -255,6 +255,7 @@
                                 <goals><goal>exec</goal></goals>
                                 <configuration>
                                     <executable>${java.home}/bin/jpackage</executable>
+                                    <workingDirectory>${project.basedir}</workingDirectory>
                                     <arguments>
                                         <argument>--type</argument>
                                         <argument>${jpackage.type}</argument>
@@ -275,7 +276,7 @@
                                         <argument>--java-options</argument>
                                         <argument>--enable-native-access=ALL-UNNAMED</argument>
                                         <argument>--icon</argument>
-                                        <argument>${jpackage.icon}</argument>
+                                        <argument>src/main/resources/gottschlinger/howlman/gui/${jpackage.icon.file}</argument>
                                         <argument>--dest</argument>
                                         <argument>${project.build.directory}/dist</argument>
                                     </arguments>
@@ -299,7 +300,7 @@
             <properties>
                 <javafx.platform>win</javafx.platform>
                 <jpackage.type>app-image</jpackage.type>
-                <jpackage.icon>${project.basedir}/src/main/resources/gottschlinger/howlman/gui/icon.ico</jpackage.icon>
+                <jpackage.icon.file>icon.ico</jpackage.icon.file>
             </properties>
         </profile>
 
@@ -314,7 +315,7 @@
             <properties>
                 <javafx.platform>mac</javafx.platform>
                 <jpackage.type>app-image</jpackage.type>
-                <jpackage.icon>${project.basedir}/src/main/resources/gottschlinger/howlman/gui/icon.icns</jpackage.icon>
+                <jpackage.icon.file>icon.icns</jpackage.icon.file>
             </properties>
         </profile>
 
@@ -329,7 +330,7 @@
             <properties>
                 <javafx.platform>mac-aarch64</javafx.platform>
                 <jpackage.type>app-image</jpackage.type>
-                <jpackage.icon>${project.basedir}/src/main/resources/gottschlinger/howlman/gui/icon.icns</jpackage.icon>
+                <jpackage.icon.file>icon.icns</jpackage.icon.file>
             </properties>
         </profile>
 
@@ -341,7 +342,7 @@
             <properties>
                 <javafx.platform>linux</javafx.platform>
                 <jpackage.type>app-image</jpackage.type>
-                <jpackage.icon>${project.basedir}/src/main/resources/gottschlinger/howlman/gui/icon.png</jpackage.icon>
+                <jpackage.icon.file>icon.png</jpackage.icon.file>
             </properties>
         </profile>
 
