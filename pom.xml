@@ -67,6 +67,12 @@
     </dependencies>
 
     <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -88,7 +94,7 @@
                             <finalName>howlman-1.0.0</finalName>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>gottsch.howlman.HowlMan</mainClass>
+                                    <mainClass>gottschlinger.howlman.HowlMan</mainClass>
                                 </transformer>
                             </transformers>
                             <filters>
@@ -163,7 +169,7 @@
                         <artifactId>javafx-maven-plugin</artifactId>
                         <version>0.0.8</version>
                         <configuration>
-                            <mainClass>gottsch.howlman.gui.GuiLauncher</mainClass>
+                            <mainClass>gottschlinger.howlman.gui.GuiLauncher</mainClass>
                             <options>
                                 <option>--enable-native-access=ALL-UNNAMED</option>
                             </options>
@@ -260,7 +266,7 @@
                                         <argument>--main-jar</argument>
                                         <argument>howlman-1.0.0.jar</argument>
                                         <argument>--main-class</argument>
-                                        <argument>gottsch.howlman.gui.GuiLauncher</argument>
+                                        <argument>gottschlinger.howlman.gui.GuiLauncher</argument>
                                         <argument>--java-options</argument>
                                         <argument>--module-path $APPDIR</argument>
                                         <argument>--java-options</argument>
