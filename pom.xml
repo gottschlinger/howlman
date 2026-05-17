@@ -16,7 +16,7 @@
         <!-- Fallbacks; overridden automatically by the platform-detection profiles below -->
         <javafx.platform>win</javafx.platform>
         <jpackage.type>app-image</jpackage.type>
-        <jpackage.icon></jpackage.icon>
+        <jpackage.icon>${project.basedir}/src/main/resources/gottschlinger/howlman/gui/icon.png</jpackage.icon>
     </properties>
 
     <dependencies>
