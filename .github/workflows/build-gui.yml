@@ -23,10 +23,6 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Check icon file exists
-        shell: pwsh
-        run: Get-ChildItem src/main/resources/gottschlinger/howlman/gui/
-
       - name: Build GUI app image
         run: mvn -P gui verify -DskipTests
 
