@@ -235,6 +235,8 @@
                                         <delete dir="${project.build.directory}/dist"/>
                                         <copy file="${project.build.directory}/howlman-1.0.0.jar"
                                               todir="${project.build.directory}/app-input"/>
+                                        <copy file="${project.basedir}/src/main/resources/gottschlinger/howlman/gui/${jpackage.icon.file}"
+                                              todir="${project.build.directory}/app-input"/>
                                     </target>
                                 </configuration>
                             </execution>
@@ -276,7 +278,7 @@
                                         <argument>--java-options</argument>
                                         <argument>--enable-native-access=ALL-UNNAMED</argument>
                                         <argument>--icon</argument>
-                                        <argument>src/main/resources/gottschlinger/howlman/gui/${jpackage.icon.file}</argument>
+                                        <argument>${project.build.directory}/app-input/${jpackage.icon.file}</argument>
                                         <argument>--dest</argument>
                                         <argument>${project.build.directory}/dist</argument>
                                     </arguments>

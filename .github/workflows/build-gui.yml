@@ -23,11 +23,9 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Debug icon path
-        run: mvn -P gui help:evaluate -Dexpression=jpackage.icon.file -q -DforceStdout
-
       - name: Check icon file exists
-        run: ls src/main/resources/gottschlinger/howlman/gui/
+        shell: pwsh
+        run: Get-ChildItem src/main/resources/gottschlinger/howlman/gui/
 
       - name: Build GUI app image
         run: mvn -P gui verify -DskipTests
