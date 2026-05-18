@@ -64,6 +64,18 @@ class InterpolationServiceTest {
         assertEquals("A-{{unknown}}", result);
     }
 
+    @Test
+    void interpolate_variableNameWithDash() {
+        String result = service.interpolate("{{access-token}}", Map.of("access-token", "abc123"));
+        assertEquals("abc123", result);
+    }
+
+    @Test
+    void interpolate_variableNameWithMixedDashUnderscore() {
+        String result = service.interpolate("{{my-var_1}}", Map.of("my-var_1", "value"));
+        assertEquals("value", result);
+    }
+
     // â”€â”€ SavedRequest interpolation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @Test
