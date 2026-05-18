@@ -10,6 +10,7 @@ import gottschlinger.howlman.model.RequestCollection;
 import gottschlinger.howlman.model.SavedRequest;
 import gottschlinger.howlman.service.HttpService;
 import gottschlinger.howlman.service.InterpolationService;
+import gottschlinger.howlman.service.ResponseExtractor;
 import gottschlinger.howlman.service.StorageService;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
@@ -19,6 +20,7 @@ import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
@@ -84,6 +86,11 @@ public class RequestTabController {
     @FXML private TableColumn<HeaderRow, String> respHeaderKeyCol;
     @FXML private TableColumn<HeaderRow, String> respHeaderValueCol;
 
+    @FXML private CheckBox extractEnabledCheck;
+    @FXML private TableView<HeaderRow> extractTable;
+    @FXML private TableColumn<HeaderRow, String> extractVarCol;
+    @FXML private TableColumn<HeaderRow, String> extractPathCol;
+
     // ── Injected dependencies ─────────────────────────────────────────────────
     private StorageService storage;
     private Supplier<String> envSupplier;
@@ -100,6 +107,7 @@ public class RequestTabController {
 
     private final ObservableList<HeaderRow> headerRows = FXCollections.observableArrayList();
     private final ObservableList<HeaderRow> responseHeaderRows = FXCollections.observableArrayList();
+    private final ObservableList<HeaderRow> extractRows = FXCollections.observableArrayList();
 
     private final HttpService httpService = new HttpService();
     private final InterpolationService interpolation = new InterpolationService();
@@ -130,6 +138,13 @@ public class RequestTabController {
         respHeaderKeyCol.setCellValueFactory(c -> c.getValue().keyProperty());
         respHeaderValueCol.setCellValueFactory(c -> c.getValue().valueProperty());
 
+        extractTable.setItems(extractRows);
+        extractVarCol.setCellValueFactory(c -> c.getValue().keyProperty());
+        extractPathCol.setCellValueFactory(c -> c.getValue().valueProperty());
+        extractVarCol.setCellFactory(headerCellFactory(HeaderRow::setKey));
+        extractPathCol.setCellFactory(headerCellFactory(HeaderRow::setValue));
+        extractRows.addListener((ListChangeListener<HeaderRow>) c -> { if (!settingValues) markDirty(); });
+
         updateBreadcrumb(null, List.of(), null);
 
         urlField.textProperty().addListener((o, p, n)       -> { if (!settingValues) markDirty(); });
@@ -147,6 +162,7 @@ public class RequestTabController {
         usernameField.textProperty().addListener((o, p, n)  -> { if (!settingValues) markDirty(); });
         passwordField.textProperty().addListener((o, p, n)  -> { if (!settingValues) markDirty(); });
         headerRows.addListener((ListChangeListener<HeaderRow>) c -> { if (!settingValues) markDirty(); });
+        extractEnabledCheck.selectedProperty().addListener((o, p, n) -> { if (!settingValues) markDirty(); });
     }
 
     public void init(StorageService storage, Supplier<String> envSupplier,
@@ -279,6 +295,12 @@ public class RequestTabController {
             }
             updateAuthPaneVisibility();
 
+            extractRows.clear();
+            extractEnabledCheck.setSelected(req.isExtractEnabled());
+            if (req.getExtracts() != null) {
+                req.getExtracts().forEach((k, v) -> extractRows.add(new HeaderRow(k, v)));
+            }
+
             statusLabel.setText("");
             statusLabel.getStyleClass().removeAll("status-ok", "status-error", "status-pending");
             responseBody.clear();
@@ -306,6 +328,8 @@ public class RequestTabController {
             usernameField.clear();
             passwordField.clear();
             updateAuthPaneVisibility();
+            extractRows.clear();
+            extractEnabledCheck.setSelected(false);
             statusLabel.setText("");
             statusLabel.getStyleClass().removeAll("status-ok", "status-error", "status-pending");
             responseBody.clear();
@@ -344,6 +368,14 @@ public class RequestTabController {
             }
             req.setAuth(auth);
         }
+
+        req.setExtractEnabled(extractEnabledCheck.isSelected());
+        Map<String, String> extracts = new LinkedHashMap<>();
+        for (HeaderRow row : extractRows) {
+            if (!row.getKey().isBlank()) extracts.put(row.getKey().trim(), row.getValue().trim());
+        }
+        req.setExtracts(extracts.isEmpty() ? null : extracts);
+
         return req;
     }
 
@@ -367,6 +399,24 @@ public class RequestTabController {
     @FXML
     private void onAuthTypeChanged() {
         updateAuthPaneVisibility();
+    }
+
+    @FXML
+    private void onExtractEnabledChanged() {
+        if (!settingValues) markDirty();
+    }
+
+    @FXML
+    private void onAddExtract() {
+        extractRows.add(new HeaderRow("", ""));
+        extractTable.scrollTo(extractRows.size() - 1);
+        extractTable.edit(extractRows.size() - 1, extractVarCol);
+    }
+
+    @FXML
+    private void onRemoveExtract() {
+        HeaderRow selected = extractTable.getSelectionModel().getSelectedItem();
+        if (selected != null) extractRows.remove(selected);
     }
 
     @FXML
@@ -401,7 +451,12 @@ public class RequestTabController {
 
         task.setOnSucceeded(e -> {
             sendButton.setDisable(false);
-            displayResponse(task.getValue());
+            HttpResponse<String> response = task.getValue();
+            displayResponse(response);
+            if (extractEnabledCheck.isSelected() && !extractRows.isEmpty()
+                    && response.statusCode() < 400) {
+                runExtraction(response);
+            }
         });
 
         task.setOnFailed(e -> {
@@ -538,6 +593,35 @@ public class RequestTabController {
     // ─────────────────────────────────────────────────────────────────────────
     // Helpers
     // ─────────────────────────────────────────────────────────────────────────
+
+    private void runExtraction(HttpResponse<String> response) {
+        List<String> specs = new ArrayList<>();
+        for (HeaderRow row : extractRows) {
+            if (!row.getKey().isBlank()) specs.add(row.getKey().trim() + "=" + row.getValue().trim());
+        }
+        if (specs.isEmpty()) return;
+
+        Map<String, String> extracted = new ResponseExtractor().extract(response, specs);
+        if (extracted.isEmpty()) {
+            statusLabel.setText(statusLabel.getText() + " · No variables extracted");
+            return;
+        }
+
+        try {
+            String envName = envSupplier != null ? envSupplier.get() : null;
+            if (envName == null || envName.isBlank()) {
+                statusLabel.setText(statusLabel.getText() + " · No active environment to save to");
+                return;
+            }
+            gottschlinger.howlman.model.Environment env = storage.loadEnvironment(envName);
+            extracted.forEach((k, v) -> env.getVariables().put(k, v));
+            storage.saveEnvironment(env);
+            String count = extracted.size() == 1 ? "1 variable" : extracted.size() + " variables";
+            statusLabel.setText(statusLabel.getText() + " · Saved " + count + " to " + envName);
+        } catch (IOException e) {
+            statusLabel.setText(statusLabel.getText() + " · Extract failed: " + e.getMessage());
+        }
+    }
 
     private void refreshUrlTooltip(Tooltip tooltip) {
         String text = urlField.getText();

@@ -14,6 +14,8 @@ public class SavedRequest {
     private String body;
     private BodyType bodyType = BodyType.NONE;
     private AuthConfig auth;
+    private Map<String, String> extracts;
+    private boolean extractEnabled;
 
     public SavedRequest() {}
 
@@ -37,4 +39,10 @@ public class SavedRequest {
 
     public AuthConfig getAuth() { return auth; }
     public void setAuth(AuthConfig auth) { this.auth = auth; }
+
+    public Map<String, String> getExtracts() { return extracts; }
+    public void setExtracts(Map<String, String> extracts) { this.extracts = extracts; }
+
+    public boolean isExtractEnabled() { return extractEnabled; }
+    public void setExtractEnabled(boolean extractEnabled) { this.extractEnabled = extractEnabled; }
 }
