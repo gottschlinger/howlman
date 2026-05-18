@@ -5,6 +5,21 @@
   <artifactId>howlman</artifactId>
   <version>1.0.0-SNAPSHOT</version>
   <build>
+    <resources>
+      <resource>
+        <filtering>true</filtering>
+        <directory>src/main/resources</directory>
+        <includes>
+          <include>**/*.properties</include>
+        </includes>
+      </resource>
+      <resource>
+        <directory>src/main/resources</directory>
+        <excludes>
+          <exclude>**/*.properties</exclude>
+        </excludes>
+      </resource>
+    </resources>
     <plugins>
       <plugin>
         <artifactId>maven-surefire-plugin</artifactId>
@@ -120,6 +135,7 @@
                   <target>
                     <delete />
                     <copy />
+                    <copy />
                   </target>
                 </configuration>
               </execution>
@@ -138,9 +154,10 @@
                 </goals>
                 <configuration>
                   <executable>${java.home}/bin/jpackage</executable>
+                  <workingDirectory>${project.basedir}</workingDirectory>
                   <arguments>
                     <argument>--type</argument>
-                    <argument>exe</argument>
+                    <argument>${jpackage.type}</argument>
                     <argument>--name</argument>
                     <argument>HowlMan</argument>
                     <argument>--app-version</argument>
@@ -157,6 +174,8 @@
                     <argument>--add-modules javafx.controls,javafx.fxml,javafx.graphics,javafx.base</argument>
                     <argument>--java-options</argument>
                     <argument>--enable-native-access=ALL-UNNAMED</argument>
+                    <argument>--icon</argument>
+                    <argument>${project.build.directory}/app-input/${jpackage.icon.file}</argument>
                     <argument>--dest</argument>
                     <argument>${project.build.directory}/dist</argument>
                   </arguments>
@@ -197,24 +216,32 @@
       <id>platform-win</id>
       <properties>
         <javafx.platform>win</javafx.platform>
+        <jpackage.type>app-image</jpackage.type>
+        <jpackage.icon.file>icon.ico</jpackage.icon.file>
       </properties>
     </profile>
     <profile>
       <id>platform-mac</id>
       <properties>
         <javafx.platform>mac</javafx.platform>
+        <jpackage.type>app-image</jpackage.type>
+        <jpackage.icon.file>icon.icns</jpackage.icon.file>
       </properties>
     </profile>
     <profile>
       <id>platform-mac-aarch64</id>
       <properties>
         <javafx.platform>mac-aarch64</javafx.platform>
+        <jpackage.type>app-image</jpackage.type>
+        <jpackage.icon.file>icon.icns</jpackage.icon.file>
       </properties>
     </profile>
     <profile>
       <id>platform-linux</id>
       <properties>
         <javafx.platform>linux</javafx.platform>
+        <jpackage.type>app-image</jpackage.type>
+        <jpackage.icon.file>icon.png</jpackage.icon.file>
       </properties>
     </profile>
   </profiles>
@@ -274,8 +301,10 @@
   </dependencies>
   <properties>
     <javafx.platform>win</javafx.platform>
-    <maven.compiler.target>17</maven.compiler.target>
+    <jpackage.type>app-image</jpackage.type>
+    <jpackage.icon.file>icon.png</jpackage.icon.file>
     <maven.compiler.source>17</maven.compiler.source>
+    <maven.compiler.target>17</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 </project>
