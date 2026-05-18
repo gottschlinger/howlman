@@ -1,3 +1,2 @@
 @echo off
-cd /d C:\Development\workspace\git\howlman
-mvn -P gui javafx:run
+"C:\Program Files\Git\bin\bash.exe" -l -c "cd \"/[path_to_howlman_repo]\" && mvn -P gui javafx:run; read -p 'Press enter to close...'"
