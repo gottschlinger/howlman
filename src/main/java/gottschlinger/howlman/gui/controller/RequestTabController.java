@@ -8,8 +8,10 @@ import gottschlinger.howlman.model.BodyType;
 import gottschlinger.howlman.model.HttpMethod;
 import gottschlinger.howlman.model.RequestCollection;
 import gottschlinger.howlman.model.SavedRequest;
+import gottschlinger.howlman.model.GeneratorType;
 import gottschlinger.howlman.service.HttpService;
 import gottschlinger.howlman.service.InterpolationService;
+import gottschlinger.howlman.service.PreGenerator;
 import gottschlinger.howlman.service.ResponseExtractor;
 import gottschlinger.howlman.service.StorageService;
 import javafx.collections.FXCollections;
@@ -86,6 +88,11 @@ public class RequestTabController {
     @FXML private TableColumn<HeaderRow, String> respHeaderKeyCol;
     @FXML private TableColumn<HeaderRow, String> respHeaderValueCol;
 
+    @FXML private CheckBox preEnabledCheck;
+    @FXML private TableView<HeaderRow> preTable;
+    @FXML private TableColumn<HeaderRow, String> preVarCol;
+    @FXML private TableColumn<HeaderRow, String> preGeneratorCol;
+
     @FXML private CheckBox extractEnabledCheck;
     @FXML private TableView<HeaderRow> extractTable;
     @FXML private TableColumn<HeaderRow, String> extractVarCol;
@@ -107,6 +114,7 @@ public class RequestTabController {
 
     private final ObservableList<HeaderRow> headerRows = FXCollections.observableArrayList();
     private final ObservableList<HeaderRow> responseHeaderRows = FXCollections.observableArrayList();
+    private final ObservableList<HeaderRow> preRows = FXCollections.observableArrayList();
     private final ObservableList<HeaderRow> extractRows = FXCollections.observableArrayList();
 
     private final HttpService httpService = new HttpService();
@@ -138,6 +146,13 @@ public class RequestTabController {
         respHeaderKeyCol.setCellValueFactory(c -> c.getValue().keyProperty());
         respHeaderValueCol.setCellValueFactory(c -> c.getValue().valueProperty());
 
+        preTable.setItems(preRows);
+        preVarCol.setCellValueFactory(c -> c.getValue().keyProperty());
+        preGeneratorCol.setCellValueFactory(c -> c.getValue().valueProperty());
+        preVarCol.setCellFactory(headerCellFactory(HeaderRow::setKey));
+        preGeneratorCol.setCellFactory(generatorCellFactory());
+        preRows.addListener((ListChangeListener<HeaderRow>) c -> { if (!settingValues) markDirty(); });
+
         extractTable.setItems(extractRows);
         extractVarCol.setCellValueFactory(c -> c.getValue().keyProperty());
         extractPathCol.setCellValueFactory(c -> c.getValue().valueProperty());
@@ -162,6 +177,7 @@ public class RequestTabController {
         usernameField.textProperty().addListener((o, p, n)  -> { if (!settingValues) markDirty(); });
         passwordField.textProperty().addListener((o, p, n)  -> { if (!settingValues) markDirty(); });
         headerRows.addListener((ListChangeListener<HeaderRow>) c -> { if (!settingValues) markDirty(); });
+        preEnabledCheck.selectedProperty().addListener((o, p, n) -> { if (!settingValues) markDirty(); });
         extractEnabledCheck.selectedProperty().addListener((o, p, n) -> { if (!settingValues) markDirty(); });
     }
 
@@ -295,6 +311,12 @@ public class RequestTabController {
             }
             updateAuthPaneVisibility();
 
+            preRows.clear();
+            preEnabledCheck.setSelected(req.isPreEnabled());
+            if (req.getPreVars() != null) {
+                req.getPreVars().forEach((k, v) -> preRows.add(new HeaderRow(k, v)));
+            }
+
             extractRows.clear();
             extractEnabledCheck.setSelected(req.isExtractEnabled());
             if (req.getExtracts() != null) {
@@ -328,6 +350,8 @@ public class RequestTabController {
             usernameField.clear();
             passwordField.clear();
             updateAuthPaneVisibility();
+            preRows.clear();
+            preEnabledCheck.setSelected(false);
             extractRows.clear();
             extractEnabledCheck.setSelected(false);
             statusLabel.setText("");
@@ -369,6 +393,13 @@ public class RequestTabController {
             req.setAuth(auth);
         }
 
+        req.setPreEnabled(preEnabledCheck.isSelected());
+        Map<String, String> preVars = new LinkedHashMap<>();
+        for (HeaderRow row : preRows) {
+            if (!row.getKey().isBlank()) preVars.put(row.getKey().trim(), row.getValue().trim());
+        }
+        req.setPreVars(preVars.isEmpty() ? null : preVars);
+
         req.setExtractEnabled(extractEnabledCheck.isSelected());
         Map<String, String> extracts = new LinkedHashMap<>();
         for (HeaderRow row : extractRows) {
@@ -402,6 +433,24 @@ public class RequestTabController {
     }
 
     @FXML
+    private void onPreEnabledChanged() {
+        if (!settingValues) markDirty();
+    }
+
+    @FXML
+    private void onAddPre() {
+        preRows.add(new HeaderRow("", GeneratorType.UUID.name()));
+        preTable.scrollTo(preRows.size() - 1);
+        preTable.edit(preRows.size() - 1, preVarCol);
+    }
+
+    @FXML
+    private void onRemovePre() {
+        HeaderRow selected = preTable.getSelectionModel().getSelectedItem();
+        if (selected != null) preRows.remove(selected);
+    }
+
+    @FXML
     private void onExtractEnabledChanged() {
         if (!settingValues) markDirty();
     }
@@ -425,13 +474,26 @@ public class RequestTabController {
         if (url.isEmpty()) { showError("URL is required."); return; }
 
         SavedRequest req = buildRequestFromForm();
+        String activeEnv = envSupplier != null ? envSupplier.get() : null;
         Map<String, String> vars;
         try {
-            String envName = envSupplier != null ? envSupplier.get() : null;
-            vars = (envName != null) ? storage.resolveVariables(envName) : new HashMap<>();
+            vars = (activeEnv != null) ? storage.resolveVariables(activeEnv) : new HashMap<>();
         } catch (IOException e) {
             showError("Failed to load environment variables: " + e.getMessage());
             return;
+        }
+
+        if (preEnabledCheck.isSelected() && !preRows.isEmpty()) {
+            Map<String, String> generated = new PreGenerator().generate(buildPreVarsMap());
+            vars = new HashMap<>(vars);
+            vars.putAll(generated);
+            try {
+                if (activeEnv != null && !activeEnv.isBlank()) {
+                    gottschlinger.howlman.model.Environment env = storage.loadEnvironment(activeEnv);
+                    env.getVariables().putAll(generated);
+                    storage.saveEnvironment(env);
+                }
+            } catch (IOException ignored) {}
         }
 
         SavedRequest resolved = interpolation.interpolate(req, vars);
@@ -593,6 +655,14 @@ public class RequestTabController {
     // ─────────────────────────────────────────────────────────────────────────
     // Helpers
     // ─────────────────────────────────────────────────────────────────────────
+
+    private Map<String, String> buildPreVarsMap() {
+        Map<String, String> map = new LinkedHashMap<>();
+        for (HeaderRow row : preRows) {
+            if (!row.getKey().isBlank()) map.put(row.getKey().trim(), row.getValue().trim());
+        }
+        return map;
+    }
 
     private void runExtraction(HttpResponse<String> response) {
         List<String> specs = new ArrayList<>();
@@ -783,6 +853,32 @@ public class RequestTabController {
             case 502 -> "Bad Gateway";
             case 503 -> "Service Unavailable";
             default  -> "";
+        };
+    }
+
+    private Callback<TableColumn<HeaderRow, String>, TableCell<HeaderRow, String>>
+            generatorCellFactory() {
+        return col -> new TableCell<>() {
+            private final javafx.scene.control.ComboBox<String> combo = new javafx.scene.control.ComboBox<>();
+            {
+                for (GeneratorType gt : GeneratorType.values()) combo.getItems().add(gt.name());
+                combo.setMaxWidth(Double.MAX_VALUE);
+                combo.valueProperty().addListener((obs, o, n) -> {
+                    HeaderRow row = getTableRow() != null ? (HeaderRow) getTableRow().getItem() : null;
+                    if (row != null && n != null) {
+                        row.setValue(n);
+                        if (!settingValues) markDirty();
+                    }
+                });
+            }
+
+            @Override
+            protected void updateItem(String value, boolean empty) {
+                super.updateItem(value, empty);
+                if (empty) { setGraphic(null); return; }
+                combo.setValue(value != null && !value.isBlank() ? value : GeneratorType.UUID.name());
+                setGraphic(combo);
+            }
         };
     }
 

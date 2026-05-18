@@ -123,6 +123,31 @@
                 </VBox>
             </Tab>
 
+            <!-- PRE tab -->
+            <Tab text="Pre">
+                <VBox spacing="10">
+                    <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
+                    <HBox spacing="8" alignment="CENTER_LEFT">
+                        <CheckBox fx:id="preEnabledCheck"
+                                  text="Run on send"
+                                  onAction="#onPreEnabledChanged"/>
+                    </HBox>
+                    <TableView fx:id="preTable" VBox.vgrow="ALWAYS" editable="true">
+                        <columns>
+                            <TableColumn fx:id="preVarCol"       text="Environment Variable" prefWidth="200"/>
+                            <TableColumn fx:id="preGeneratorCol" text="Generator"             prefWidth="160"/>
+                        </columns>
+                        <columnResizePolicy>
+                            <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+                        </columnResizePolicy>
+                    </TableView>
+                    <HBox spacing="6">
+                        <Button text="+ Add"  onAction="#onAddPre"    styleClass="small-button"/>
+                        <Button text="Remove" onAction="#onRemovePre" styleClass="small-button"/>
+                    </HBox>
+                </VBox>
+            </Tab>
+
             <!-- POST tab -->
             <Tab text="Post">
                 <VBox spacing="10">

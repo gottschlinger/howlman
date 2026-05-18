@@ -14,6 +14,8 @@ public class SavedRequest {
     private String body;
     private BodyType bodyType = BodyType.NONE;
     private AuthConfig auth;
+    private Map<String, String> preVars;
+    private boolean preEnabled;
     private Map<String, String> extracts;
     private boolean extractEnabled;
 
@@ -39,6 +41,12 @@ public class SavedRequest {
 
     public AuthConfig getAuth() { return auth; }
     public void setAuth(AuthConfig auth) { this.auth = auth; }
+
+    public Map<String, String> getPreVars() { return preVars; }
+    public void setPreVars(Map<String, String> preVars) { this.preVars = preVars; }
+
+    public boolean isPreEnabled() { return preEnabled; }
+    public void setPreEnabled(boolean preEnabled) { this.preEnabled = preEnabled; }
 
     public Map<String, String> getExtracts() { return extracts; }
     public void setExtracts(Map<String, String> extracts) { this.extracts = extracts; }
