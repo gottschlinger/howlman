@@ -385,6 +385,17 @@ public class RequestTabController {
         }
 
         SavedRequest resolved = interpolation.interpolate(req, vars);
+        if (resolved.getUrl() != null && resolved.getUrl().contains("{{")) {
+            Matcher m = VAR_TOKEN.matcher(resolved.getUrl());
+            StringBuilder unresolved = new StringBuilder();
+            while (m.find()) {
+                if (!unresolved.isEmpty()) unresolved.append(", ");
+                unresolved.append("{{").append(m.group(1)).append("}}");
+            }
+            showError("Unresolved variable(s) in URL: " + unresolved
+                    + "\nCheck that the active environment defines " + (unresolved.toString().contains(",") ? "these variables" : "this variable") + ".");
+            return;
+        }
         sendButton.setDisable(true);
         statusLabel.getStyleClass().removeAll("status-ok", "status-error", "status-pending");
         statusLabel.getStyleClass().add("status-pending");

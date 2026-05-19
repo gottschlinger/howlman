@@ -30,8 +30,14 @@ public class HttpService {
     }
 
     public HttpResponse<String> execute(SavedRequest request) throws IOException, InterruptedException {
-        HttpRequest.Builder builder = HttpRequest.newBuilder()
-                .uri(URI.create(request.getUrl()));
+        String rawUrl = request.getUrl();
+        URI uri;
+        try {
+            uri = URI.create(rawUrl);
+        } catch (IllegalArgumentException e) {
+            throw new IOException("Invalid URL — check for unresolved {{variables}}: " + rawUrl, e);
+        }
+        HttpRequest.Builder builder = HttpRequest.newBuilder().uri(uri);
 
         if (request.getHeaders() != null) {
             for (Map.Entry<String, String> entry : request.getHeaders().entrySet()) {
