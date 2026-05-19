@@ -43,6 +43,8 @@
             <ComboBox fx:id="methodCombo" prefWidth="110"/>
             <TextField fx:id="urlField" HBox.hgrow="ALWAYS"
                        promptText="Enter URL  (supports {{variables}})"/>
+            <Button fx:id="copyUrlButton" text="" onAction="#onCopyUrl"
+                    styleClass="small-button" minWidth="28" maxWidth="28"/>
             <Button fx:id="sendButton" text="Send" onAction="#onSend" styleClass="send-button"/>
             <Button text="Save" onAction="#onSave" styleClass="save-button"/>
             <Button text="Save As…" onAction="#onSaveAs" styleClass="save-button"/>

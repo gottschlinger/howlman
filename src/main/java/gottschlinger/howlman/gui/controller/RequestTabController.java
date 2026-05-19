@@ -23,6 +23,12 @@ import javafx.geometry.Insets;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.MenuItem;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.SVGPath;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
@@ -66,6 +72,7 @@ public class RequestTabController {
 
     @FXML private ComboBox<String> methodCombo;
     @FXML private TextField urlField;
+    @FXML private Button copyUrlButton;
     @FXML private Button sendButton;
 
     @FXML private TableView<HeaderRow> headersTable;
@@ -169,6 +176,19 @@ public class RequestTabController {
         urlTooltip.setWrapText(true);
         urlTooltip.setMaxWidth(600);
         urlField.setOnMouseEntered(e -> refreshUrlTooltip(urlTooltip));
+
+        copyUrlButton.setGraphic(makeCopyIcon());
+        Tooltip copyTip = new Tooltip("Copy resolved URL");
+        copyTip.setShowDelay(Duration.millis(400));
+        copyUrlButton.setTooltip(copyTip);
+
+        ContextMenu urlContextMenu = new ContextMenu();
+        urlField.setContextMenu(new ContextMenu()); // suppress default
+        urlField.setOnContextMenuRequested(event -> {
+            populateUrlContextMenu(urlContextMenu);
+            urlContextMenu.show(urlField, event.getScreenX(), event.getScreenY());
+            event.consume();
+        });
         methodCombo.valueProperty().addListener((o, p, n)   -> { if (!settingValues) markDirty(); });
         bodyArea.textProperty().addListener((o, p, n)       -> { if (!settingValues) markDirty(); });
         bodyTypeCombo.valueProperty().addListener((o, p, n) -> { if (!settingValues) markDirty(); });
@@ -469,6 +489,20 @@ public class RequestTabController {
     }
 
     @FXML
+    private void onCopyUrl() {
+        String resolved = resolveUrl();
+        if (resolved == null || resolved.isBlank()) return;
+        ClipboardContent content = new ClipboardContent();
+        content.putString(resolved);
+        Clipboard.getSystemClipboard().setContent(content);
+        copyUrlButton.setGraphic(makeCheckIcon());
+        javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(
+                javafx.util.Duration.seconds(1.5));
+        pause.setOnFinished(e -> copyUrlButton.setGraphic(makeCopyIcon()));
+        pause.play();
+    }
+
+    @FXML
     private void onSend() {
         String url = urlField.getText().trim();
         if (url.isEmpty()) { showError("URL is required."); return; }
@@ -690,6 +724,71 @@ public class RequestTabController {
             statusLabel.setText(statusLabel.getText() + " · Saved " + count + " to " + envName);
         } catch (IOException e) {
             statusLabel.setText(statusLabel.getText() + " · Extract failed: " + e.getMessage());
+        }
+    }
+
+    private SVGPath makeCopyIcon() {
+        SVGPath svg = new SVGPath();
+        svg.setContent("M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2v-2h.5A1.5 1.5 0 0 0 14 10.5v-7A1.5 1.5 0 0 0 12.5 2h-7A1.5 1.5 0 0 0 4 3.5v-2zm0 1a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-.5.5H4.5a.5.5 0 0 1-.5-.5v-7zM2 3.5a.5.5 0 0 1 .5-.5H3v8.5a.5.5 0 0 0 .5.5H9v.5a.5.5 0 0 1-.5.5H2a.5.5 0 0 1-.5-.5v-9z");
+        svg.setFill(Color.web("#8b949e"));
+        svg.setScaleX(0.85);
+        svg.setScaleY(0.85);
+        return svg;
+    }
+
+    private SVGPath makeCheckIcon() {
+        SVGPath svg = new SVGPath();
+        svg.setContent("M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z");
+        svg.setFill(Color.web("#28a745"));
+        svg.setScaleX(0.85);
+        svg.setScaleY(0.85);
+        return svg;
+    }
+
+    private String resolveUrl() {
+        String raw = urlField.getText();
+        if (raw == null || raw.isBlank()) return raw;
+        try {
+            String envName = envSupplier != null ? envSupplier.get() : null;
+            Map<String, String> vars = (envName != null && storage != null)
+                    ? storage.resolveVariables(envName) : new HashMap<>();
+            return interpolation.interpolate(raw, vars);
+        } catch (IOException e) {
+            return raw;
+        }
+    }
+
+    private void populateUrlContextMenu(ContextMenu menu) {
+        menu.getItems().clear();
+        String raw = urlField.getText();
+        if (raw == null || !raw.contains("{{")) return;
+
+        Map<String, String> vars = new HashMap<>();
+        try {
+            String envName = envSupplier != null ? envSupplier.get() : null;
+            if (envName != null && storage != null) vars = storage.resolveVariables(envName);
+        } catch (IOException ignored) {}
+
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\\{\\{([\\w-]+)\\}\\}");
+        java.util.regex.Matcher matcher = pattern.matcher(raw);
+        java.util.LinkedHashSet<String> seen = new java.util.LinkedHashSet<>();
+        while (matcher.find()) seen.add(matcher.group(1));
+
+        final Map<String, String> finalVars = vars;
+        for (String varName : seen) {
+            String resolved = finalVars.get(varName);
+            MenuItem item = new MenuItem(varName + "  →  " + (resolved != null ? resolved : "(unresolved)"));
+            if (resolved != null) {
+                final String value = resolved;
+                item.setOnAction(e -> {
+                    ClipboardContent cc = new ClipboardContent();
+                    cc.putString(value);
+                    Clipboard.getSystemClipboard().setContent(cc);
+                });
+            } else {
+                item.setDisable(true);
+            }
+            menu.getItems().add(item);
         }
     }
 
