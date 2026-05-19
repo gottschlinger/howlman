@@ -2,6 +2,7 @@
 
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.PasswordField?>
@@ -42,6 +43,8 @@
             <ComboBox fx:id="methodCombo" prefWidth="110"/>
             <TextField fx:id="urlField" HBox.hgrow="ALWAYS"
                        promptText="Enter URL  (supports {{variables}})"/>
+            <Button fx:id="copyUrlButton" text="" onAction="#onCopyUrl"
+                    styleClass="small-button" minWidth="28" maxWidth="28"/>
             <Button fx:id="sendButton" text="Send" onAction="#onSend" styleClass="send-button"/>
             <Button text="Save" onAction="#onSave" styleClass="save-button"/>
             <Button text="Save As…" onAction="#onSaveAs" styleClass="save-button"/>
@@ -119,6 +122,56 @@
                     <TextArea fx:id="bodyArea" VBox.vgrow="ALWAYS"
                               promptText="Request body" wrapText="false"
                               styleClass="mono-area"/>
+                </VBox>
+            </Tab>
+
+            <!-- PRE tab -->
+            <Tab text="Pre">
+                <VBox spacing="10">
+                    <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
+                    <HBox spacing="8" alignment="CENTER_LEFT">
+                        <CheckBox fx:id="preEnabledCheck"
+                                  text="Run on send"
+                                  onAction="#onPreEnabledChanged"/>
+                    </HBox>
+                    <TableView fx:id="preTable" VBox.vgrow="ALWAYS" editable="true">
+                        <columns>
+                            <TableColumn fx:id="preVarCol"       text="Environment Variable" prefWidth="200"/>
+                            <TableColumn fx:id="preGeneratorCol" text="Generator"             prefWidth="160"/>
+                        </columns>
+                        <columnResizePolicy>
+                            <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+                        </columnResizePolicy>
+                    </TableView>
+                    <HBox spacing="6">
+                        <Button text="+ Add"  onAction="#onAddPre"    styleClass="small-button"/>
+                        <Button text="Remove" onAction="#onRemovePre" styleClass="small-button"/>
+                    </HBox>
+                </VBox>
+            </Tab>
+
+            <!-- POST tab -->
+            <Tab text="Post">
+                <VBox spacing="10">
+                    <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
+                    <HBox spacing="8" alignment="CENTER_LEFT">
+                        <CheckBox fx:id="extractEnabledCheck"
+                                  text="Extract on send"
+                                  onAction="#onExtractEnabledChanged"/>
+                    </HBox>
+                    <TableView fx:id="extractTable" VBox.vgrow="ALWAYS" editable="true">
+                        <columns>
+                            <TableColumn fx:id="extractVarCol"  text="Environment Variable"  prefWidth="180"/>
+                            <TableColumn fx:id="extractPathCol" text="JSON Path" prefWidth="340"/>
+                        </columns>
+                        <columnResizePolicy>
+                            <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+                        </columnResizePolicy>
+                    </TableView>
+                    <HBox spacing="6" style="-fx-padding: 0 0 0 0;">
+                        <Button text="+ Add"  onAction="#onAddExtract"    styleClass="small-button"/>
+                        <Button text="Remove" onAction="#onRemoveExtract" styleClass="small-button"/>
+                    </HBox>
                 </VBox>
             </Tab>
 
