@@ -8,8 +8,12 @@ import gottschlinger.howlman.model.BodyType;
 import gottschlinger.howlman.model.HttpMethod;
 import gottschlinger.howlman.model.RequestCollection;
 import gottschlinger.howlman.model.SavedRequest;
+import gottschlinger.howlman.model.Environment;
+import gottschlinger.howlman.model.GeneratorType;
 import gottschlinger.howlman.service.HttpService;
 import gottschlinger.howlman.service.InterpolationService;
+import gottschlinger.howlman.service.PreGenerator;
+import gottschlinger.howlman.service.ResponseExtractor;
 import gottschlinger.howlman.service.StorageService;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
@@ -19,6 +23,15 @@ import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.animation.PauseTransition;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.MenuItem;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.layout.GridPane;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.SVGPath;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
@@ -46,12 +59,15 @@ import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class RequestTabController {
 
@@ -62,6 +78,7 @@ public class RequestTabController {
 
     @FXML private ComboBox<String> methodCombo;
     @FXML private TextField urlField;
+    @FXML private Button copyUrlButton;
     @FXML private Button sendButton;
 
     @FXML private TableView<HeaderRow> headersTable;
@@ -72,9 +89,9 @@ public class RequestTabController {
     @FXML private TextArea bodyArea;
 
     @FXML private ComboBox<String> authTypeCombo;
-    @FXML private javafx.scene.layout.GridPane bearerPane;
+    @FXML private GridPane bearerPane;
     @FXML private TextField tokenField;
-    @FXML private javafx.scene.layout.GridPane basicPane;
+    @FXML private GridPane basicPane;
     @FXML private TextField usernameField;
     @FXML private PasswordField passwordField;
 
@@ -83,6 +100,16 @@ public class RequestTabController {
     @FXML private TableView<HeaderRow> responseHeaders;
     @FXML private TableColumn<HeaderRow, String> respHeaderKeyCol;
     @FXML private TableColumn<HeaderRow, String> respHeaderValueCol;
+
+    @FXML private CheckBox preEnabledCheck;
+    @FXML private TableView<HeaderRow> preTable;
+    @FXML private TableColumn<HeaderRow, String> preVarCol;
+    @FXML private TableColumn<HeaderRow, String> preGeneratorCol;
+
+    @FXML private CheckBox extractEnabledCheck;
+    @FXML private TableView<HeaderRow> extractTable;
+    @FXML private TableColumn<HeaderRow, String> extractVarCol;
+    @FXML private TableColumn<HeaderRow, String> extractPathCol;
 
     // ── Injected dependencies ─────────────────────────────────────────────────
     private StorageService storage;
@@ -100,6 +127,10 @@ public class RequestTabController {
 
     private final ObservableList<HeaderRow> headerRows = FXCollections.observableArrayList();
     private final ObservableList<HeaderRow> responseHeaderRows = FXCollections.observableArrayList();
+    private final ObservableList<HeaderRow> preRows = FXCollections.observableArrayList();
+    private final ObservableList<HeaderRow> extractRows = FXCollections.observableArrayList();
+
+    private static final Pattern VAR_TOKEN = Pattern.compile("\\{\\{([\\w-]+)\\}\\}");
 
     private final HttpService httpService = new HttpService();
     private final InterpolationService interpolation = new InterpolationService();
@@ -130,6 +161,20 @@ public class RequestTabController {
         respHeaderKeyCol.setCellValueFactory(c -> c.getValue().keyProperty());
         respHeaderValueCol.setCellValueFactory(c -> c.getValue().valueProperty());
 
+        preTable.setItems(preRows);
+        preVarCol.setCellValueFactory(c -> c.getValue().keyProperty());
+        preGeneratorCol.setCellValueFactory(c -> c.getValue().valueProperty());
+        preVarCol.setCellFactory(headerCellFactory(HeaderRow::setKey));
+        preGeneratorCol.setCellFactory(generatorCellFactory());
+        preRows.addListener((ListChangeListener<HeaderRow>) c -> { if (!settingValues) markDirty(); });
+
+        extractTable.setItems(extractRows);
+        extractVarCol.setCellValueFactory(c -> c.getValue().keyProperty());
+        extractPathCol.setCellValueFactory(c -> c.getValue().valueProperty());
+        extractVarCol.setCellFactory(headerCellFactory(HeaderRow::setKey));
+        extractPathCol.setCellFactory(headerCellFactory(HeaderRow::setValue));
+        extractRows.addListener((ListChangeListener<HeaderRow>) c -> { if (!settingValues) markDirty(); });
+
         updateBreadcrumb(null, List.of(), null);
 
         urlField.textProperty().addListener((o, p, n)       -> { if (!settingValues) markDirty(); });
@@ -139,6 +184,19 @@ public class RequestTabController {
         urlTooltip.setWrapText(true);
         urlTooltip.setMaxWidth(600);
         urlField.setOnMouseEntered(e -> refreshUrlTooltip(urlTooltip));
+
+        copyUrlButton.setGraphic(makeCopyIcon());
+        Tooltip copyTip = new Tooltip("Copy resolved URL");
+        copyTip.setShowDelay(Duration.millis(400));
+        copyUrlButton.setTooltip(copyTip);
+
+        ContextMenu urlContextMenu = new ContextMenu();
+        urlField.setContextMenu(new ContextMenu()); // suppress default
+        urlField.setOnContextMenuRequested(event -> {
+            populateUrlContextMenu(urlContextMenu);
+            urlContextMenu.show(urlField, event.getScreenX(), event.getScreenY());
+            event.consume();
+        });
         methodCombo.valueProperty().addListener((o, p, n)   -> { if (!settingValues) markDirty(); });
         bodyArea.textProperty().addListener((o, p, n)       -> { if (!settingValues) markDirty(); });
         bodyTypeCombo.valueProperty().addListener((o, p, n) -> { if (!settingValues) markDirty(); });
@@ -147,6 +205,8 @@ public class RequestTabController {
         usernameField.textProperty().addListener((o, p, n)  -> { if (!settingValues) markDirty(); });
         passwordField.textProperty().addListener((o, p, n)  -> { if (!settingValues) markDirty(); });
         headerRows.addListener((ListChangeListener<HeaderRow>) c -> { if (!settingValues) markDirty(); });
+        preEnabledCheck.selectedProperty().addListener((o, p, n) -> { if (!settingValues) markDirty(); });
+        extractEnabledCheck.selectedProperty().addListener((o, p, n) -> { if (!settingValues) markDirty(); });
     }
 
     public void init(StorageService storage, Supplier<String> envSupplier,
@@ -279,6 +339,18 @@ public class RequestTabController {
             }
             updateAuthPaneVisibility();
 
+            preRows.clear();
+            preEnabledCheck.setSelected(req.isPreEnabled());
+            if (req.getPreVars() != null) {
+                req.getPreVars().forEach((k, v) -> preRows.add(new HeaderRow(k, v)));
+            }
+
+            extractRows.clear();
+            extractEnabledCheck.setSelected(req.isExtractEnabled());
+            if (req.getExtracts() != null) {
+                req.getExtracts().forEach((k, v) -> extractRows.add(new HeaderRow(k, v)));
+            }
+
             statusLabel.setText("");
             statusLabel.getStyleClass().removeAll("status-ok", "status-error", "status-pending");
             responseBody.clear();
@@ -306,6 +378,10 @@ public class RequestTabController {
             usernameField.clear();
             passwordField.clear();
             updateAuthPaneVisibility();
+            preRows.clear();
+            preEnabledCheck.setSelected(false);
+            extractRows.clear();
+            extractEnabledCheck.setSelected(false);
             statusLabel.setText("");
             statusLabel.getStyleClass().removeAll("status-ok", "status-error", "status-pending");
             responseBody.clear();
@@ -344,6 +420,21 @@ public class RequestTabController {
             }
             req.setAuth(auth);
         }
+
+        req.setPreEnabled(preEnabledCheck.isSelected());
+        Map<String, String> preVars = new LinkedHashMap<>();
+        for (HeaderRow row : preRows) {
+            if (!row.getKey().isBlank()) preVars.put(row.getKey().trim(), row.getValue().trim());
+        }
+        req.setPreVars(preVars.isEmpty() ? null : preVars);
+
+        req.setExtractEnabled(extractEnabledCheck.isSelected());
+        Map<String, String> extracts = new LinkedHashMap<>();
+        for (HeaderRow row : extractRows) {
+            if (!row.getKey().isBlank()) extracts.put(row.getKey().trim(), row.getValue().trim());
+        }
+        req.setExtracts(extracts.isEmpty() ? null : extracts);
+
         return req;
     }
 
@@ -370,18 +461,80 @@ public class RequestTabController {
     }
 
     @FXML
+    private void onPreEnabledChanged() {
+        if (!settingValues) markDirty();
+    }
+
+    @FXML
+    private void onAddPre() {
+        preRows.add(new HeaderRow("", GeneratorType.UUID.name()));
+        preTable.scrollTo(preRows.size() - 1);
+        preTable.edit(preRows.size() - 1, preVarCol);
+    }
+
+    @FXML
+    private void onRemovePre() {
+        HeaderRow selected = preTable.getSelectionModel().getSelectedItem();
+        if (selected != null) preRows.remove(selected);
+    }
+
+    @FXML
+    private void onExtractEnabledChanged() {
+        if (!settingValues) markDirty();
+    }
+
+    @FXML
+    private void onAddExtract() {
+        extractRows.add(new HeaderRow("", ""));
+        extractTable.scrollTo(extractRows.size() - 1);
+        extractTable.edit(extractRows.size() - 1, extractVarCol);
+    }
+
+    @FXML
+    private void onRemoveExtract() {
+        HeaderRow selected = extractTable.getSelectionModel().getSelectedItem();
+        if (selected != null) extractRows.remove(selected);
+    }
+
+    @FXML
+    private void onCopyUrl() {
+        String resolved = resolveUrl();
+        if (resolved == null || resolved.isBlank()) return;
+        ClipboardContent content = new ClipboardContent();
+        content.putString(resolved);
+        Clipboard.getSystemClipboard().setContent(content);
+        copyUrlButton.setGraphic(makeCheckIcon());
+        PauseTransition pause = new PauseTransition(Duration.seconds(1.5));
+        pause.setOnFinished(e -> copyUrlButton.setGraphic(makeCopyIcon()));
+        pause.play();
+    }
+
+    @FXML
     private void onSend() {
         String url = urlField.getText().trim();
         if (url.isEmpty()) { showError("URL is required."); return; }
 
         SavedRequest req = buildRequestFromForm();
+        String activeEnv = envSupplier != null ? envSupplier.get() : null;
         Map<String, String> vars;
         try {
-            String envName = envSupplier != null ? envSupplier.get() : null;
-            vars = (envName != null) ? storage.resolveVariables(envName) : new HashMap<>();
+            vars = (activeEnv != null) ? storage.resolveVariables(activeEnv) : new HashMap<>();
         } catch (IOException e) {
             showError("Failed to load environment variables: " + e.getMessage());
             return;
+        }
+
+        if (preEnabledCheck.isSelected() && !preRows.isEmpty()) {
+            Map<String, String> generated = new PreGenerator().generate(buildPreVarsMap());
+            vars = new HashMap<>(vars);
+            vars.putAll(generated);
+            try {
+                if (activeEnv != null && !activeEnv.isBlank()) {
+                    Environment env = storage.loadEnvironment(activeEnv);
+                    env.getVariables().putAll(generated);
+                    storage.saveEnvironment(env);
+                }
+            } catch (IOException ignored) {}
         }
 
         SavedRequest resolved = interpolation.interpolate(req, vars);
@@ -401,7 +554,12 @@ public class RequestTabController {
 
         task.setOnSucceeded(e -> {
             sendButton.setDisable(false);
-            displayResponse(task.getValue());
+            HttpResponse<String> response = task.getValue();
+            displayResponse(response);
+            if (extractEnabledCheck.isSelected() && !extractRows.isEmpty()
+                    && response.statusCode() < 400) {
+                runExtraction(response);
+            }
         });
 
         task.setOnFailed(e -> {
@@ -538,6 +696,107 @@ public class RequestTabController {
     // ─────────────────────────────────────────────────────────────────────────
     // Helpers
     // ─────────────────────────────────────────────────────────────────────────
+
+    private Map<String, String> buildPreVarsMap() {
+        Map<String, String> map = new LinkedHashMap<>();
+        for (HeaderRow row : preRows) {
+            if (!row.getKey().isBlank()) map.put(row.getKey().trim(), row.getValue().trim());
+        }
+        return map;
+    }
+
+    private void runExtraction(HttpResponse<String> response) {
+        List<String> specs = new ArrayList<>();
+        for (HeaderRow row : extractRows) {
+            if (!row.getKey().isBlank()) specs.add(row.getKey().trim() + "=" + row.getValue().trim());
+        }
+        if (specs.isEmpty()) return;
+
+        Map<String, String> extracted = new ResponseExtractor().extract(response, specs);
+        if (extracted.isEmpty()) {
+            statusLabel.setText(statusLabel.getText() + " · No variables extracted");
+            return;
+        }
+
+        try {
+            String envName = envSupplier != null ? envSupplier.get() : null;
+            if (envName == null || envName.isBlank()) {
+                statusLabel.setText(statusLabel.getText() + " · No active environment to save to");
+                return;
+            }
+            Environment env = storage.loadEnvironment(envName);
+            extracted.forEach((k, v) -> env.getVariables().put(k, v));
+            storage.saveEnvironment(env);
+            String count = extracted.size() == 1 ? "1 variable" : extracted.size() + " variables";
+            statusLabel.setText(statusLabel.getText() + " · Saved " + count + " to " + envName);
+        } catch (IOException e) {
+            statusLabel.setText(statusLabel.getText() + " · Extract failed: " + e.getMessage());
+        }
+    }
+
+    private SVGPath makeCopyIcon() {
+        SVGPath svg = new SVGPath();
+        svg.setContent("M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2v-2h.5A1.5 1.5 0 0 0 14 10.5v-7A1.5 1.5 0 0 0 12.5 2h-7A1.5 1.5 0 0 0 4 3.5v-2zm0 1a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-.5.5H4.5a.5.5 0 0 1-.5-.5v-7zM2 3.5a.5.5 0 0 1 .5-.5H3v8.5a.5.5 0 0 0 .5.5H9v.5a.5.5 0 0 1-.5.5H2a.5.5 0 0 1-.5-.5v-9z");
+        svg.setFill(Color.web("#8b949e"));
+        svg.setScaleX(0.85);
+        svg.setScaleY(0.85);
+        return svg;
+    }
+
+    private SVGPath makeCheckIcon() {
+        SVGPath svg = new SVGPath();
+        svg.setContent("M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z");
+        svg.setFill(Color.web("#28a745"));
+        svg.setScaleX(0.85);
+        svg.setScaleY(0.85);
+        return svg;
+    }
+
+    private String resolveUrl() {
+        String raw = urlField.getText();
+        if (raw == null || raw.isBlank()) return raw;
+        try {
+            String envName = envSupplier != null ? envSupplier.get() : null;
+            Map<String, String> vars = (envName != null && storage != null)
+                    ? storage.resolveVariables(envName) : new HashMap<>();
+            return interpolation.interpolate(raw, vars);
+        } catch (IOException e) {
+            return raw;
+        }
+    }
+
+    private void populateUrlContextMenu(ContextMenu menu) {
+        menu.getItems().clear();
+        String raw = urlField.getText();
+        if (raw == null || !raw.contains("{{")) return;
+
+        Map<String, String> vars = new HashMap<>();
+        try {
+            String envName = envSupplier != null ? envSupplier.get() : null;
+            if (envName != null && storage != null) vars = storage.resolveVariables(envName);
+        } catch (IOException ignored) {}
+
+        Matcher matcher = VAR_TOKEN.matcher(raw);
+        LinkedHashSet<String> seen = new LinkedHashSet<>();
+        while (matcher.find()) seen.add(matcher.group(1));
+
+        final Map<String, String> finalVars = vars;
+        for (String varName : seen) {
+            String resolved = finalVars.get(varName);
+            MenuItem item = new MenuItem(varName + "  →  " + (resolved != null ? resolved : "(unresolved)"));
+            if (resolved != null) {
+                final String value = resolved;
+                item.setOnAction(e -> {
+                    ClipboardContent cc = new ClipboardContent();
+                    cc.putString(value);
+                    Clipboard.getSystemClipboard().setContent(cc);
+                });
+            } else {
+                item.setDisable(true);
+            }
+            menu.getItems().add(item);
+        }
+    }
 
     private void refreshUrlTooltip(Tooltip tooltip) {
         String text = urlField.getText();
@@ -699,6 +958,32 @@ public class RequestTabController {
             case 502 -> "Bad Gateway";
             case 503 -> "Service Unavailable";
             default  -> "";
+        };
+    }
+
+    private Callback<TableColumn<HeaderRow, String>, TableCell<HeaderRow, String>>
+            generatorCellFactory() {
+        return col -> new TableCell<>() {
+            private final ComboBox<String> combo = new ComboBox<>();
+            {
+                for (GeneratorType gt : GeneratorType.values()) combo.getItems().add(gt.name());
+                combo.setMaxWidth(Double.MAX_VALUE);
+                combo.valueProperty().addListener((obs, o, n) -> {
+                    HeaderRow row = getTableRow() != null ? (HeaderRow) getTableRow().getItem() : null;
+                    if (row != null && n != null) {
+                        row.setValue(n);
+                        if (!settingValues) markDirty();
+                    }
+                });
+            }
+
+            @Override
+            protected void updateItem(String value, boolean empty) {
+                super.updateItem(value, empty);
+                if (empty) { setGraphic(null); return; }
+                combo.setValue(value != null && !value.isBlank() ? value : GeneratorType.UUID.name());
+                setGraphic(combo);
+            }
         };
     }
 

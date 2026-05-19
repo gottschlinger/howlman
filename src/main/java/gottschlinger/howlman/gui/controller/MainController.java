@@ -64,9 +64,11 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
@@ -89,6 +91,9 @@ public class MainController {
 
     // ── Tab management ────────────────────────────────────────────────────────
     private Tab addTab;
+
+    // ── Tree expand state ─────────────────────────────────────────────────────
+    private final Set<String> expandedPaths = new HashSet<>();
 
     // ── Drag-and-drop ─────────────────────────────────────────────────────────
     private TreeItem<TreeNodeData> dragSourceItem;
@@ -118,6 +123,8 @@ public class MainController {
     /** Called by HowlManApp after FXML is loaded. */
     public void init(StorageService storage) throws IOException {
         this.storage = storage;
+        AppConfig config = storage.loadConfig();
+        expandedPaths.addAll(config.getExpandedTreePaths());
         refreshEnvironments();
         refreshCollections();
         openNewTab();
@@ -185,6 +192,26 @@ public class MainController {
                 return;
             }
         }
+
+        // If the only open tab is a clean New Request, reuse it instead of stacking
+        List<Tab> contentTabs = requestTabPane.getTabs().stream()
+                .filter(t -> t != addTab)
+                .collect(Collectors.toList());
+        if (contentTabs.size() == 1) {
+            RequestTabController ctrl = (RequestTabController) contentTabs.get(0).getUserData();
+            if (ctrl.getCurrentRequestName() == null && !ctrl.isDirty()) {
+                try {
+                    RequestCollection col = storage.loadCollection(collectionName);
+                    StorageService.findRequest(col, folderPath, requestName).ifPresent(req ->
+                            ctrl.loadRequest(req, collectionName, folderPath, requestName));
+                    requestTabPane.getSelectionModel().select(contentTabs.get(0));
+                } catch (IOException e) {
+                    showError("Failed to load request: " + e.getMessage());
+                }
+                return;
+            }
+        }
+
         // Open in a new tab
         try {
             RequestCollection col = storage.loadCollection(collectionName);
@@ -255,11 +282,28 @@ public class MainController {
         for (String name : storage.listCollectionNames()) {
             RequestCollection col = storage.loadCollection(name);
             TreeItem<TreeNodeData> colItem = new TreeItem<>(new TreeNodeData.Collection(name), makeFolderIcon());
-            colItem.setExpanded(true);
+            colItem.setExpanded(expandedPaths.contains(name));
+            attachExpandListener(colItem, name);
             addRequestItems(colItem, col.getRequests(), name, List.of());
             addFolderItems(colItem, col.getFolders(), name, List.of());
             root.getChildren().add(colItem);
         }
+    }
+
+    private void attachExpandListener(TreeItem<TreeNodeData> item, String pathKey) {
+        item.expandedProperty().addListener((obs, wasExpanded, isExpanded) -> {
+            if (isExpanded) expandedPaths.add(pathKey);
+            else expandedPaths.remove(pathKey);
+            saveExpandedPaths();
+        });
+    }
+
+    private void saveExpandedPaths() {
+        try {
+            AppConfig config = storage.loadConfig();
+            config.setExpandedTreePaths(new ArrayList<>(expandedPaths));
+            storage.saveConfig(config);
+        } catch (IOException ignored) {}
     }
 
     private void addRequestItems(TreeItem<TreeNodeData> parent, List<SavedRequest> requests,
@@ -279,10 +323,12 @@ public class MainController {
             List<String> path = new ArrayList<>(parentPath);
             path.add(folder.getName());
             List<String> immutablePath = List.copyOf(path);
+            String pathKey = colName + "/" + String.join("/", immutablePath);
             TreeItem<TreeNodeData> folderItem = new TreeItem<>(
                     new TreeNodeData.Folder(folder.getName(), colName, immutablePath),
                     makeFolderIcon());
-            folderItem.setExpanded(true);
+            folderItem.setExpanded(expandedPaths.contains(pathKey));
+            attachExpandListener(folderItem, pathKey);
             addRequestItems(folderItem, folder.getRequests(), colName, immutablePath);
             addFolderItems(folderItem, folder.getFolders(), colName, immutablePath);
             parent.getChildren().add(folderItem);

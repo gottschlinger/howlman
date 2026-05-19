@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
 
 public class InterpolationService {
 
-    private static final Pattern TOKEN = Pattern.compile("\\{\\{(\\w+)\\}\\}");
+    private static final Pattern TOKEN = Pattern.compile("\\{\\{([\\w-]+)\\}\\}");
 
     public String interpolate(String input, Map<String, String> variables) {
         if (input == null || variables == null || variables.isEmpty()) {

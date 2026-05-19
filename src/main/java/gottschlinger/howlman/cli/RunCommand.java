@@ -3,12 +3,11 @@ package gottschlinger.howlman.cli;
 import gottschlinger.howlman.HowlMan;
 import gottschlinger.howlman.model.*;
 import gottschlinger.howlman.service.*;
-import gottschlinger.howlman.model.*;
-import gottschlinger.howlman.service.*;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.ParentCommand;
 
+import java.net.http.HttpResponse;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -59,6 +58,12 @@ public class RunCommand implements Callable<Integer> {
     @Option(names = "--verbose", description = "Print response headers")
     boolean verbose;
 
+    @Option(names = "--extract", description = "Extract varName=json.path from response and save to environment (repeatable)")
+    List<String> extract;
+
+    @Option(names = "--extract-env", description = "Environment to save extracted variables into (default: active environment)")
+    String extractEnv;
+
     @Override
     public Integer call() {
         SavedRequest resolved;
@@ -84,10 +89,33 @@ public class RunCommand implements Callable<Integer> {
         try {
             var response = new HttpService().execute(resolved);
             new ResponsePrinter().print(response, verbose);
+            if (extract != null && !extract.isEmpty() && response.statusCode() < 400) {
+                applyExtractions(response);
+            }
             return response.statusCode() < 400 ? 0 : 1;
         } catch (Exception e) {
             System.err.println("Error: connection failed: " + e.getMessage());
             return 2;
+        }
+    }
+
+    private void applyExtractions(HttpResponse<String> response) {
+        Map<String, String> extracted = new ResponseExtractor().extract(response, extract);
+        if (extracted.isEmpty()) return;
+        try {
+            String targetEnv = extractEnv != null ? extractEnv : parent.storage.loadConfig().getActiveEnvironment();
+            if (targetEnv == null || targetEnv.isBlank()) {
+                System.err.println("Warning: no target environment for extraction; use --extract-env or set an active environment.");
+                return;
+            }
+            Environment env = parent.storage.loadEnvironment(targetEnv);
+            extracted.forEach((k, v) -> {
+                env.getVariables().put(k, v);
+                System.err.println("Saved " + k + " → " + targetEnv);
+            });
+            parent.storage.saveEnvironment(env);
+        } catch (Exception e) {
+            System.err.println("Warning: could not save extracted variables: " + e.getMessage());
         }
     }
 
