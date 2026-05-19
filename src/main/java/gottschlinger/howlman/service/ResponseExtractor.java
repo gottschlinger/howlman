@@ -12,11 +12,6 @@ public class ResponseExtractor {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    /**
-     * Parses each spec as "varName=dot.path" and extracts the matching value from
-     * the JSON response body.  Returns only the entries that were successfully found.
-     * Warnings for missing fields or non-JSON bodies are printed to stderr.
-     */
     public Map<String, String> extract(HttpResponse<String> response, List<String> specs) {
         Map<String, String> result = new LinkedHashMap<>();
         if (specs == null || specs.isEmpty()) return result;

@@ -8,6 +8,7 @@ import gottschlinger.howlman.model.BodyType;
 import gottschlinger.howlman.model.HttpMethod;
 import gottschlinger.howlman.model.RequestCollection;
 import gottschlinger.howlman.model.SavedRequest;
+import gottschlinger.howlman.model.Environment;
 import gottschlinger.howlman.model.GeneratorType;
 import gottschlinger.howlman.service.HttpService;
 import gottschlinger.howlman.service.InterpolationService;
@@ -22,11 +23,13 @@ import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.animation.PauseTransition;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
+import javafx.scene.layout.GridPane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.SVGPath;
 import javafx.scene.control.ButtonBar;
@@ -56,12 +59,15 @@ import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class RequestTabController {
 
@@ -83,9 +89,9 @@ public class RequestTabController {
     @FXML private TextArea bodyArea;
 
     @FXML private ComboBox<String> authTypeCombo;
-    @FXML private javafx.scene.layout.GridPane bearerPane;
+    @FXML private GridPane bearerPane;
     @FXML private TextField tokenField;
-    @FXML private javafx.scene.layout.GridPane basicPane;
+    @FXML private GridPane basicPane;
     @FXML private TextField usernameField;
     @FXML private PasswordField passwordField;
 
@@ -123,6 +129,8 @@ public class RequestTabController {
     private final ObservableList<HeaderRow> responseHeaderRows = FXCollections.observableArrayList();
     private final ObservableList<HeaderRow> preRows = FXCollections.observableArrayList();
     private final ObservableList<HeaderRow> extractRows = FXCollections.observableArrayList();
+
+    private static final Pattern VAR_TOKEN = Pattern.compile("\\{\\{([\\w-]+)\\}\\}");
 
     private final HttpService httpService = new HttpService();
     private final InterpolationService interpolation = new InterpolationService();
@@ -496,8 +504,7 @@ public class RequestTabController {
         content.putString(resolved);
         Clipboard.getSystemClipboard().setContent(content);
         copyUrlButton.setGraphic(makeCheckIcon());
-        javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(
-                javafx.util.Duration.seconds(1.5));
+        PauseTransition pause = new PauseTransition(Duration.seconds(1.5));
         pause.setOnFinished(e -> copyUrlButton.setGraphic(makeCopyIcon()));
         pause.play();
     }
@@ -523,7 +530,7 @@ public class RequestTabController {
             vars.putAll(generated);
             try {
                 if (activeEnv != null && !activeEnv.isBlank()) {
-                    gottschlinger.howlman.model.Environment env = storage.loadEnvironment(activeEnv);
+                    Environment env = storage.loadEnvironment(activeEnv);
                     env.getVariables().putAll(generated);
                     storage.saveEnvironment(env);
                 }
@@ -717,7 +724,7 @@ public class RequestTabController {
                 statusLabel.setText(statusLabel.getText() + " · No active environment to save to");
                 return;
             }
-            gottschlinger.howlman.model.Environment env = storage.loadEnvironment(envName);
+            Environment env = storage.loadEnvironment(envName);
             extracted.forEach((k, v) -> env.getVariables().put(k, v));
             storage.saveEnvironment(env);
             String count = extracted.size() == 1 ? "1 variable" : extracted.size() + " variables";
@@ -769,9 +776,8 @@ public class RequestTabController {
             if (envName != null && storage != null) vars = storage.resolveVariables(envName);
         } catch (IOException ignored) {}
 
-        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\\{\\{([\\w-]+)\\}\\}");
-        java.util.regex.Matcher matcher = pattern.matcher(raw);
-        java.util.LinkedHashSet<String> seen = new java.util.LinkedHashSet<>();
+        Matcher matcher = VAR_TOKEN.matcher(raw);
+        LinkedHashSet<String> seen = new LinkedHashSet<>();
         while (matcher.find()) seen.add(matcher.group(1));
 
         final Map<String, String> finalVars = vars;
@@ -958,7 +964,7 @@ public class RequestTabController {
     private Callback<TableColumn<HeaderRow, String>, TableCell<HeaderRow, String>>
             generatorCellFactory() {
         return col -> new TableCell<>() {
-            private final javafx.scene.control.ComboBox<String> combo = new javafx.scene.control.ComboBox<>();
+            private final ComboBox<String> combo = new ComboBox<>();
             {
                 for (GeneratorType gt : GeneratorType.values()) combo.getItems().add(gt.name());
                 combo.setMaxWidth(Double.MAX_VALUE);

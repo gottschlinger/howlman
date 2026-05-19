@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import gottschlinger.howlman.HowlMan;
 import gottschlinger.howlman.model.*;
 import gottschlinger.howlman.service.*;
-import gottschlinger.howlman.model.*;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -13,6 +12,7 @@ import picocli.CommandLine.Parameters;
 import picocli.CommandLine.ParentCommand;
 
 import java.io.IOException;
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -278,7 +278,7 @@ public class RequestCommand implements Callable<Integer> {
             }
         }
 
-        private void applyExtractions(java.net.http.HttpResponse<String> response, String resolvedEnvName) {
+        private void applyExtractions(HttpResponse<String> response, String resolvedEnvName) {
             Map<String, String> extracted = new ResponseExtractor().extract(response, extract);
             if (extracted.isEmpty()) return;
             try {
@@ -287,7 +287,7 @@ public class RequestCommand implements Callable<Integer> {
                     System.err.println("Warning: no target environment for extraction; use --extract-env or set an active environment.");
                     return;
                 }
-                gottschlinger.howlman.model.Environment environment = req.storage().loadEnvironment(targetEnv);
+                Environment environment = req.storage().loadEnvironment(targetEnv);
                 extracted.forEach((k, v) -> {
                     environment.getVariables().put(k, v);
                     System.err.println("Saved " + k + " → " + targetEnv);

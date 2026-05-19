@@ -6,15 +6,12 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.UUID;
 
 public class PreGenerator {
 
     private static final Random RANDOM = new Random();
 
-    /**
-     * Accepts a map of varName → GeneratorType name and returns varName → generated value.
-     * Unrecognised generator names are skipped with a warning.
-     */
     public Map<String, String> generate(Map<String, String> preVars) {
         Map<String, String> result = new LinkedHashMap<>();
         if (preVars == null || preVars.isEmpty()) return result;
@@ -32,7 +29,7 @@ public class PreGenerator {
             }
 
             result.put(varName, switch (type) {
-                case UUID        -> java.util.UUID.randomUUID().toString();
+                case UUID        -> UUID.randomUUID().toString();
                 case TIMESTAMP   -> String.valueOf(Instant.now().toEpochMilli());
                 case RANDOM_INT  -> String.valueOf(RANDOM.nextInt(Integer.MAX_VALUE));
             });

@@ -3,12 +3,11 @@ package gottschlinger.howlman.cli;
 import gottschlinger.howlman.HowlMan;
 import gottschlinger.howlman.model.*;
 import gottschlinger.howlman.service.*;
-import gottschlinger.howlman.model.*;
-import gottschlinger.howlman.service.*;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.ParentCommand;
 
+import java.net.http.HttpResponse;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -100,8 +99,8 @@ public class RunCommand implements Callable<Integer> {
         }
     }
 
-    private void applyExtractions(java.net.http.HttpResponse<String> response) {
-        Map<String, String> extracted = new gottschlinger.howlman.service.ResponseExtractor().extract(response, extract);
+    private void applyExtractions(HttpResponse<String> response) {
+        Map<String, String> extracted = new ResponseExtractor().extract(response, extract);
         if (extracted.isEmpty()) return;
         try {
             String targetEnv = extractEnv != null ? extractEnv : parent.storage.loadConfig().getActiveEnvironment();
@@ -109,7 +108,7 @@ public class RunCommand implements Callable<Integer> {
                 System.err.println("Warning: no target environment for extraction; use --extract-env or set an active environment.");
                 return;
             }
-            gottschlinger.howlman.model.Environment env = parent.storage.loadEnvironment(targetEnv);
+            Environment env = parent.storage.loadEnvironment(targetEnv);
             extracted.forEach((k, v) -> {
                 env.getVariables().put(k, v);
                 System.err.println("Saved " + k + " → " + targetEnv);
