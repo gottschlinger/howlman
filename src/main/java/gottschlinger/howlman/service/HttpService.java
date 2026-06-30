@@ -52,6 +52,7 @@ public class HttpService {
 
         injectAuth(builder, request.getAuth());
         injectContentTypeIfAbsent(builder, request);
+        injectDefaultHeadersIfAbsent(builder, request);
 
         BodyPublisher publisher = buildPublisher(request);
         builder.method(request.getMethod().name(), publisher);
@@ -79,6 +80,26 @@ public class HttpService {
             return BodyPublishers.noBody();
         }
         return BodyPublishers.ofString(body);
+    }
+
+    /**
+     * Adds headers Postman/browsers send by default but the JDK omits, unless the
+     * user already set them. Accept-Encoding is intentionally NOT advertised: the
+     * JDK HttpClient does not auto-decompress, so a gzipped response would arrive
+     * as undecodable bytes.
+     */
+    private void injectDefaultHeadersIfAbsent(HttpRequest.Builder builder, SavedRequest request) {
+        if (!hasHeader(request, "User-Agent")) {
+            builder.header("User-Agent", "HowlMan/1.1.0");
+        }
+        if (!hasHeader(request, "Accept")) {
+            builder.header("Accept", "*/*");
+        }
+    }
+
+    private boolean hasHeader(SavedRequest request, String name) {
+        return request.getHeaders() != null
+                && request.getHeaders().keySet().stream().anyMatch(k -> k.equalsIgnoreCase(name));
     }
 
     private void injectContentTypeIfAbsent(HttpRequest.Builder builder, SavedRequest request) {
