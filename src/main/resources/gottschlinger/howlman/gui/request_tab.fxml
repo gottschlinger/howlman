@@ -97,6 +97,7 @@
                 <VBox>
                     <TableView fx:id="headersTable" VBox.vgrow="ALWAYS" editable="true">
                         <columns>
+                            <TableColumn fx:id="headerEnabledCol" text="" prefWidth="34" minWidth="34" maxWidth="34" resizable="false" sortable="false"/>
                             <TableColumn fx:id="headerKeyCol" text="Key" prefWidth="220"/>
                             <TableColumn fx:id="headerValueCol" text="Value" prefWidth="440"/>
                         </columns>

@@ -76,6 +76,8 @@ public class MainController {
 
     // ── Top bar ──────────────────────────────────────────────────────────────
     @FXML private ComboBox<String> environmentCombo;
+    @FXML private Button importButton;
+    @FXML private Button exportButton;
     @FXML private Button renameEnvButton;
     @FXML private Button editEnvButton;
     @FXML private Button deleteEnvButton;
@@ -125,6 +127,8 @@ public class MainController {
         this.storage = storage;
         AppConfig config = storage.loadConfig();
         expandedPaths.addAll(config.getExpandedTreePaths());
+        importButton.setGraphic(makeImportExportIcon(true));
+        exportButton.setGraphic(makeImportExportIcon(false));
         refreshEnvironments();
         refreshCollections();
         openNewTab();
@@ -333,6 +337,21 @@ public class MainController {
             addFolderItems(folderItem, folder.getFolders(), colName, immutablePath);
             parent.getChildren().add(folderItem);
         }
+    }
+
+    private SVGPath makeImportExportIcon(boolean isImport) {
+        SVGPath svg = new SVGPath();
+        if (isImport) {
+            // bi-download: arrow pointing down onto a shelf
+            svg.setContent("M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5zM7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z");
+        } else {
+            // bi-upload: arrow pointing up from a shelf
+            svg.setContent("M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5zM7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 1 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z");
+        }
+        svg.setFill(Color.web("#8b949e"));
+        svg.setScaleX(0.85);
+        svg.setScaleY(0.85);
+        return svg;
     }
 
     private SVGPath makeFolderIcon() {

@@ -61,10 +61,10 @@
                 <HBox styleClass="sidebar-header" alignment="CENTER_LEFT" spacing="4">
                     <padding><Insets top="8" right="8" bottom="8" left="10"/></padding>
                     <Label text="Collections" styleClass="sidebar-title" HBox.hgrow="ALWAYS"/>
-                    <Button text="⬇" onAction="#onImportCollection" styleClass="icon-button">
+                    <Button fx:id="importButton" text="" onAction="#onImportCollection" styleClass="icon-button">
                         <tooltip><Tooltip text="Import collection"/></tooltip>
                     </Button>
-                    <Button text="⬆" onAction="#onExportCollection" styleClass="icon-button">
+                    <Button fx:id="exportButton" text="" onAction="#onExportCollection" styleClass="icon-button">
                         <tooltip><Tooltip text="Export collection"/></tooltip>
                     </Button>
                     <Button text="+" onAction="#onNewCollection" styleClass="icon-button">

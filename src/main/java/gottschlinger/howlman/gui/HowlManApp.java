@@ -85,6 +85,10 @@ public class HowlManApp extends Application {
     }
 
     public static void main(String[] args) {
+        // Must be set before any HttpClient activity — the JDK caches the
+        // restricted-header allowlist once. Unlocks normally-managed headers
+        // (Host, Connection, etc.) so users can override them.
+        System.setProperty("jdk.httpclient.allowRestrictedHeaders", "host,connection,upgrade,expect");
         launch(args);
     }
 }

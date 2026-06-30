@@ -11,6 +11,7 @@ public class SavedRequest {
     private HttpMethod method = HttpMethod.GET;
     private String url;
     private Map<String, String> headers;
+    private Map<String, String> disabledHeaders;
     private String body;
     private BodyType bodyType = BodyType.NONE;
     private AuthConfig auth;
@@ -32,6 +33,10 @@ public class SavedRequest {
 
     public Map<String, String> getHeaders() { return headers; }
     public void setHeaders(Map<String, String> headers) { this.headers = headers; }
+
+    /** Headers the user unchecked: persisted but excluded from {@link #getHeaders()} so they are never sent. */
+    public Map<String, String> getDisabledHeaders() { return disabledHeaders; }
+    public void setDisabledHeaders(Map<String, String> disabledHeaders) { this.disabledHeaders = disabledHeaders; }
 
     public String getBody() { return body; }
     public void setBody(String body) { this.body = body; }

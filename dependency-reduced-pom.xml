@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>gottsch</groupId>
   <artifactId>howlman</artifactId>
-  <version>1.0.0-SNAPSHOT</version>
+  <version>1.1.0-SNAPSHOT</version>
   <build>
     <resources>
       <resource>
@@ -35,7 +35,7 @@
               <goal>shade</goal>
             </goals>
             <configuration>
-              <finalName>howlman-1.0.0</finalName>
+              <finalName>howlman-1.1.0</finalName>
               <transformers>
                 <transformer>
                   <mainClass>gottschlinger.howlman.HowlMan</mainClass>
@@ -161,11 +161,11 @@
                     <argument>--name</argument>
                     <argument>HowlMan</argument>
                     <argument>--app-version</argument>
-                    <argument>1.0.0</argument>
+                    <argument>1.1.0</argument>
                     <argument>--input</argument>
                     <argument>${project.build.directory}/app-input</argument>
                     <argument>--main-jar</argument>
-                    <argument>howlman-1.0.0.jar</argument>
+                    <argument>howlman-1.1.0.jar</argument>
                     <argument>--main-class</argument>
                     <argument>gottschlinger.howlman.gui.GuiLauncher</argument>
                     <argument>--java-options</argument>

@@ -41,6 +41,7 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
+import javafx.scene.control.cell.CheckBoxTableCell;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TableView;
@@ -82,6 +83,7 @@ public class RequestTabController {
     @FXML private Button sendButton;
 
     @FXML private TableView<HeaderRow> headersTable;
+    @FXML private TableColumn<HeaderRow, Boolean> headerEnabledCol;
     @FXML private TableColumn<HeaderRow, String> headerKeyCol;
     @FXML private TableColumn<HeaderRow, String> headerValueCol;
 
@@ -152,6 +154,9 @@ public class RequestTabController {
         authTypeCombo.setValue("NONE");
 
         headersTable.setItems(headerRows);
+        headerEnabledCol.setCellValueFactory(c -> c.getValue().enabledProperty());
+        headerEnabledCol.setCellFactory(CheckBoxTableCell.forTableColumn(headerEnabledCol));
+        headerEnabledCol.setEditable(true);
         headerKeyCol.setCellValueFactory(c -> c.getValue().keyProperty());
         headerValueCol.setCellValueFactory(c -> c.getValue().valueProperty());
         headerKeyCol.setCellFactory(headerCellFactory(HeaderRow::setKey));
@@ -319,7 +324,10 @@ public class RequestTabController {
 
             headerRows.clear();
             if (req.getHeaders() != null) {
-                req.getHeaders().forEach((k, v) -> headerRows.add(new HeaderRow(k, v)));
+                req.getHeaders().forEach((k, v) -> headerRows.add(newHeaderRow(k, v, true)));
+            }
+            if (req.getDisabledHeaders() != null) {
+                req.getDisabledHeaders().forEach((k, v) -> headerRows.add(newHeaderRow(k, v, false)));
             }
 
             bodyTypeCombo.setValue(req.getBodyType() != null ? req.getBodyType().name() : "NONE");
@@ -398,10 +406,14 @@ public class RequestTabController {
         req.setUrl(urlField.getText().trim());
 
         Map<String, String> headers = new LinkedHashMap<>();
+        Map<String, String> disabledHeaders = new LinkedHashMap<>();
         for (HeaderRow row : headerRows) {
-            if (!row.getKey().isBlank()) headers.put(row.getKey().trim(), row.getValue());
+            if (row.getKey().isBlank()) continue;
+            if (row.isEnabled()) headers.put(row.getKey().trim(), row.getValue());
+            else disabledHeaders.put(row.getKey().trim(), row.getValue());
         }
         req.setHeaders(headers.isEmpty() ? null : headers);
+        req.setDisabledHeaders(disabledHeaders.isEmpty() ? null : disabledHeaders);
 
         BodyType bodyType = BodyType.valueOf(bodyTypeCombo.getValue());
         req.setBodyType(bodyType);
@@ -444,9 +456,16 @@ public class RequestTabController {
 
     @FXML
     private void onAddHeader() {
-        headerRows.add(new HeaderRow("", ""));
+        headerRows.add(newHeaderRow("", "", true));
         headersTable.scrollTo(headerRows.size() - 1);
         headersTable.edit(headerRows.size() - 1, headerKeyCol);
+    }
+
+    /** Header row wired to mark the tab dirty when its enabled checkbox is toggled. */
+    private HeaderRow newHeaderRow(String key, String value, boolean enabled) {
+        HeaderRow row = new HeaderRow(key, value, enabled);
+        row.enabledProperty().addListener((o, was, now) -> { if (!settingValues) markDirty(); });
+        return row;
     }
 
     @FXML
@@ -1004,7 +1023,16 @@ public class RequestTabController {
             private final TextField tf = new TextField();
             {
                 tf.setMaxWidth(Double.MAX_VALUE);
-                tf.focusedProperty().addListener((obs, was, focused) -> { if (!focused) commit(); });
+                tf.focusedProperty().addListener((obs, was, focused) -> {
+                    if (focused) {
+                        // The always-on TextField swallows the click, so the row is never
+                        // selected by the table. Select it here so Remove has a target.
+                        TableView<HeaderRow> tv = getTableView();
+                        if (tv != null) tv.getSelectionModel().select(getIndex());
+                    } else {
+                        commit();
+                    }
+                });
                 tf.setOnAction(e -> commit());
             }
 

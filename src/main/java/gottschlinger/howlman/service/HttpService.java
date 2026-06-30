@@ -21,7 +21,12 @@ public class HttpService {
     private final HttpSender sender;
 
     public HttpService() {
-        HttpClient client = HttpClient.newHttpClient();
+        // Pin to HTTP/1.1 so a literal Host header is sent (HTTP/2 replaces it
+        // with the :authority pseudo-header, which some servers/WAFs reject).
+        // Matches Postman's default behavior.
+        HttpClient client = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
+                .build();
         this.sender = request -> client.send(request, BodyHandlers.ofString());
     }
 
