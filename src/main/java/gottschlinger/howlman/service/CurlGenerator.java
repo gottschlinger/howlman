@@ -31,10 +31,12 @@ public class CurlGenerator {
             }
         }
 
-        // auth
-        String authHeader = buildAuthHeader(request.getAuth());
-        if (authHeader != null) {
-            parts.add("-H 'Authorization: " + authHeader + "'");
+        // auth (skip if an explicit Authorization header was already emitted)
+        if (!hasAuthorizationHeader(request)) {
+            String authHeader = buildAuthHeader(request.getAuth());
+            if (authHeader != null) {
+                parts.add("-H 'Authorization: " + authHeader + "'");
+            }
         }
 
         // body
@@ -51,13 +53,19 @@ public class CurlGenerator {
     private boolean hasContentTypeHeader(SavedRequest request) {
         return request.getHeaders() != null
                 && request.getHeaders().keySet().stream()
-                        .anyMatch(k -> k.equalsIgnoreCase("Content-Type"));
+                .anyMatch(k -> k.equalsIgnoreCase("Content-Type"));
     }
 
     private String implicitContentType(SavedRequest request) {
         if (request.getBodyType() == BodyType.JSON) return "application/json";
         if (request.getBodyType() == BodyType.FORM) return "application/x-www-form-urlencoded";
         return null;
+    }
+
+    private boolean hasAuthorizationHeader(SavedRequest request) {
+        return request.getHeaders() != null
+                && request.getHeaders().keySet().stream()
+                .anyMatch(k -> k.equalsIgnoreCase("Authorization"));
     }
 
     private String buildAuthHeader(AuthConfig auth) {

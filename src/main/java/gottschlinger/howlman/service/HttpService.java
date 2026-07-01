@@ -27,6 +27,7 @@ public class HttpService {
         HttpClient client = HttpClient.newBuilder()
                 .version(HttpClient.Version.HTTP_1_1)
                 .build();
+
         this.sender = request -> client.send(request, BodyHandlers.ofString());
     }
 
@@ -37,11 +38,13 @@ public class HttpService {
     public HttpResponse<String> execute(SavedRequest request) throws IOException, InterruptedException {
         String rawUrl = request.getUrl();
         URI uri;
+
         try {
             uri = URI.create(rawUrl);
         } catch (IllegalArgumentException e) {
             throw new IOException("Invalid URL — check for unresolved {{variables}}: " + rawUrl, e);
         }
+
         HttpRequest.Builder builder = HttpRequest.newBuilder().uri(uri);
 
         if (request.getHeaders() != null) {
@@ -50,20 +53,26 @@ public class HttpService {
             }
         }
 
-        injectAuth(builder, request.getAuth());
+        injectAuth(builder, request, request.getAuth());
         injectContentTypeIfAbsent(builder, request);
         injectDefaultHeadersIfAbsent(builder, request);
 
         BodyPublisher publisher = buildPublisher(request);
         builder.method(request.getMethod().name(), publisher);
-
         return sender.send(builder.build());
     }
 
-    private void injectAuth(HttpRequest.Builder builder, AuthConfig auth) {
+    private void injectAuth(HttpRequest.Builder builder, SavedRequest request, AuthConfig auth) {
         if (auth == null || auth.getType() == AuthType.NONE) {
             return;
         }
+
+        // Skip injection if an explicit Authorization header is already present;
+        // sending duplicate Authorization headers causes 400 on many servers/gateways.
+        if (hasHeader(request, "Authorization")) {
+            return;
+        }
+
         if (auth.getType() == AuthType.BEARER) {
             builder.header("Authorization", "Bearer " + auth.getToken());
         } else if (auth.getType() == AuthType.BASIC) {
@@ -76,6 +85,7 @@ public class HttpService {
     private BodyPublisher buildPublisher(SavedRequest request) {
         BodyType bodyType = request.getBodyType();
         String body = request.getBody();
+
         if (bodyType == null || bodyType == BodyType.NONE || body == null) {
             return BodyPublishers.noBody();
         }
@@ -92,6 +102,7 @@ public class HttpService {
         if (!hasHeader(request, "User-Agent")) {
             builder.header("User-Agent", "HowlMan/1.1.0");
         }
+
         if (!hasHeader(request, "Accept")) {
             builder.header("Accept", "*/*");
         }
@@ -105,10 +116,12 @@ public class HttpService {
     private void injectContentTypeIfAbsent(HttpRequest.Builder builder, SavedRequest request) {
         boolean hasContentType = request.getHeaders() != null
                 && request.getHeaders().keySet().stream()
-                        .anyMatch(k -> k.equalsIgnoreCase("Content-Type"));
+                .anyMatch(k -> k.equalsIgnoreCase("Content-Type"));
+
         if (hasContentType) {
             return;
         }
+
         BodyType bodyType = request.getBodyType();
         if (bodyType == BodyType.JSON) {
             builder.header("Content-Type", "application/json");

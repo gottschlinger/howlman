@@ -51,7 +51,7 @@ class HttpServiceTest {
         return req;
     }
 
-    // â”€â”€ method + URL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── method + URL ──────────────────────────────────────────────────────
 
     @Test
     void execute_setsMethodAndUrl() throws Exception {
@@ -94,7 +94,7 @@ class HttpServiceTest {
         assertTrue(sent.headers().firstValue("Content-Type").orElse("").contains("application/x-www-form-urlencoded"));
     }
 
-    // â”€â”€ headers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── headers ───────────────────────────────────────────────────────────
 
     @Test
     void execute_customHeadersAreSent() throws Exception {
@@ -131,7 +131,7 @@ class HttpServiceTest {
         assertEquals("text/plain", sent.headers().firstValue("Content-Type").orElse(""));
     }
 
-    // â”€â”€ auth â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── auth ─────────────────────────────────────────────────────────────
 
     @Test
     void execute_bearerAuth_setsAuthorizationHeader() throws Exception {
@@ -174,7 +174,28 @@ class HttpServiceTest {
         assertTrue(sent.headers().firstValue("Authorization").isEmpty());
     }
 
-    // â”€â”€ response passthrough â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    @Test
+    void execute_explicitAuthorizationHeader_authSectionNotDuplicated() throws Exception {
+        stubSender();
+        Map<String, String> headers = new LinkedHashMap<>();
+        headers.put("Authorization", "Bearer explicit-token");
+
+        AuthConfig auth = new AuthConfig();
+        auth.setType(AuthType.BEARER);
+        auth.setToken("auth-section-token");
+
+        SavedRequest req = get("http://example.com");
+        req.setHeaders(headers);
+        req.setAuth(auth);
+        service.execute(req);
+
+        HttpRequest sent = captureRequest();
+        // Only one Authorization header should be present (the explicit one)
+        assertEquals(1, sent.headers().allValues("Authorization").size());
+        assertEquals("Bearer explicit-token", sent.headers().firstValue("Authorization").orElse(""));
+    }
+
+    // ── response passthrough ──────────────────────────────────────────────
 
     @Test
     void execute_returnsResponseFromSender() throws Exception {
