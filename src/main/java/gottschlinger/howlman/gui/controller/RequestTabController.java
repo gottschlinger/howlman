@@ -178,7 +178,7 @@ public class RequestTabController {
         // Form table setup
         formTable.setItems(formRows);
         formKeyCol.setCellValueFactory(c -> c.getValue().keyProperty());
-        formKeyCol.setCellValueFactory(c -> c.getValue().valueProperty());
+        formValueCol.setCellValueFactory(c -> c.getValue().valueProperty());
         formKeyCol.setCellFactory(headerCellFactory(HeaderRow::setKey));
         formValueCol.setCellFactory(headerCellFactory(HeaderRow::setValue));
         formRows.addListener((ListChangeListener<HeaderRow>) c -> {if (!settingValues) markDirty();});
