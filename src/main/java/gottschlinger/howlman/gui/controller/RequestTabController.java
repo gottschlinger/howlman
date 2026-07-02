@@ -30,6 +30,7 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.SVGPath;
 import javafx.scene.control.ButtonBar;
@@ -54,9 +55,12 @@ import javafx.util.Duration;
 
 import java.io.IOException;
 import java.net.ConnectException;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.net.UnknownHostException;
 import java.net.http.HttpTimeoutException;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -89,6 +93,10 @@ public class RequestTabController {
 
     @FXML private ComboBox<String> bodyTypeCombo;
     @FXML private TextArea bodyArea;
+    @FXML private TableView<HeaderRow> formTable;
+    @FXML private TableColumn<HeaderRow, String> formKeyCol;
+    @FXML private TableColumn<HeaderRow, String> formValueCol;
+    @FXML private HBox formButtonBar;
 
     @FXML private ComboBox<String> authTypeCombo;
     @FXML private GridPane bearerPane;
@@ -131,6 +139,7 @@ public class RequestTabController {
     private final ObservableList<HeaderRow> responseHeaderRows = FXCollections.observableArrayList();
     private final ObservableList<HeaderRow> preRows = FXCollections.observableArrayList();
     private final ObservableList<HeaderRow> extractRows = FXCollections.observableArrayList();
+    private final ObservableList<HeaderRow> formRows = FXCollections.observableArrayList();
 
     private static final Pattern VAR_TOKEN = Pattern.compile("\\{\\{([\\w-]+)\\}\\}");
 
@@ -165,6 +174,17 @@ public class RequestTabController {
         responseHeaders.setItems(responseHeaderRows);
         respHeaderKeyCol.setCellValueFactory(c -> c.getValue().keyProperty());
         respHeaderValueCol.setCellValueFactory(c -> c.getValue().valueProperty());
+
+        // Form table setup
+        formTable.setItems(formRows);
+        formKeyCol.setCellValueFactory(c -> c.getValue().keyProperty());
+        formKeyCol.setCellValueFactory(c -> c.getValue().valueProperty());
+        formKeyCol.setCellFactory(headerCellFactory(HeaderRow::setKey));
+        formValueCol.setCellFactory(headerCellFactory(HeaderRow::setValue));
+        formRows.addListener((ListChangeListener<HeaderRow>) c -> {if (!settingValues) markDirty();});
+
+        // Toggle body view when body type changes
+        bodyTypeCombo.valueProperty().addListener((o, prev, newVal) -> updateBodyView());
 
         preTable.setItems(preRows);
         preVarCol.setCellValueFactory(c -> c.getValue().keyProperty());
@@ -333,6 +353,19 @@ public class RequestTabController {
             bodyTypeCombo.setValue(req.getBodyType() != null ? req.getBodyType().name() : "NONE");
             bodyArea.setText(req.getBody() != null ? req.getBody() : "");
 
+            // Populate form table if body type is FORM
+            formRows.clear();
+            if (req.getBodyType() == BodyType.FORM && req.getBody() != null && !req.getBody().isBlank()) {
+                for (String pair : req.getBody().split("&")) {
+                    String[] parts = pair.split("=", 2);
+                    String key = URLDecoder.decode(parts[0], StandardCharsets.UTF_8);
+                    String value = parts.length > 1
+                    ? URLDecoder.decode(parts[1], StandardCharsets.UTF_8)
+                            : "";
+                    formRows.add(new HeaderRow(key, value));
+                }
+            }
+
             AuthConfig auth = req.getAuth();
             if (auth != null && auth.getType() != null) {
                 authTypeCombo.setValue(auth.getType().name());
@@ -415,10 +448,25 @@ public class RequestTabController {
         req.setHeaders(headers.isEmpty() ? null : headers);
         req.setDisabledHeaders(disabledHeaders.isEmpty() ? null : disabledHeaders);
 
+        /////////////////////////////
         BodyType bodyType = BodyType.valueOf(bodyTypeCombo.getValue());
         req.setBodyType(bodyType);
-        String body = bodyArea.getText();
-        if (bodyType != BodyType.NONE && !body.isBlank()) req.setBody(body);
+
+        if (bodyType == BodyType.FORM) {
+            // Build URL-encoded body from form table rows
+            StringBuilder sb = new StringBuilder();
+            for (HeaderRow row : formRows) {
+                if (row.getKey().isBlank()) continue;
+                if (!sb.isEmpty()) sb.append("&");
+                sb.append(URLEncoder.encode(row.getKey().trim(), StandardCharsets.UTF_8));
+                sb.append('=');
+                sb.append(URLEncoder.encode(row.getValue().trim(), StandardCharsets.UTF_8));
+            }
+            req.setBody(sb.isEmpty() ? null : sb.toString());
+        } else {
+            String body = bodyArea.getText();
+            if (bodyType != BodyType.NONE && !body.isBlank()) req.setBody(body);
+        }
 
         AuthType authType = AuthType.valueOf(authTypeCombo.getValue());
         if (authType != AuthType.NONE) {
@@ -1053,5 +1101,28 @@ public class RequestTabController {
                 setText(null);
             }
         };
+    }
+
+    private void updateBodyView() {
+        boolean isForm = "FORM".equals(bodyTypeCombo.getValue());
+        bodyArea.setVisible(!isForm);
+        bodyArea.setManaged(!isForm);
+        formTable.setVisible(isForm);
+        formTable.setManaged(isForm);
+        formButtonBar.setVisible(isForm);
+        formButtonBar.setManaged(isForm);
+    }
+
+    @FXML
+    private void onAddFormParam() {
+        formRows.add(new HeaderRow("", ""));
+        formTable.scrollTo(formRows.size() - 1);
+        formTable.edit(formRows.size() - 1, formKeyCol);
+    }
+
+    @FXML
+    private void onRemoveFormParam() {
+        HeaderRow selected = formTable.getSelectionModel().getSelectedItem();
+        if (selected != null) formRows.remove(selected);
     }
 }
